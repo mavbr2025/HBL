@@ -1,0 +1,87 @@
+customer:
+  name: "Eskolor"
+  folder_name: "Eskolor"
+  clickup_folder_id: "90172501824"
+
+party_rules:
+  notify_party: "same_as_consignee_when_agent_says_same"
+  delivery_apply_to: "consignee"
+
+learned_examples:
+  MTMLXGT-25822:
+    hbl_no: "WH26040201"
+    mbl_no: "ONEYTPEG24594800"
+    learned_from_finished_hbl: false
+    approved_override: true
+    charge_source: "ClickUp pricing validation comments and linked quote MTMQUOTE-3568"
+    vessel_voyage: "HUMBOLDT EXPRESS 2617E"
+    issue_date: "GUATEMALA, 22 DE MAYO DE 2026."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE (3)"
+    freight_term: "FREIGHT COLLECT"
+    parties:
+      shipper: |
+        HEYO ENTERPRISES CO., LTD.
+        NO.60, RUEICHENG ST., CIANJHEN DISTRICT, KAOHSIUNG
+        CITY 806, TAIWAN (R.O.C.)
+      consignee: |
+        ESKOLOR, SOCIEDAD ANONIMA
+        6TA CALLE 25-70 ZONA 4 EL NARANJO
+        BODEGA NO.1 MIXCO, GUATEMALA
+        TAX ID:3739964-0
+        TEL:(502)23062888 ATTN:PERLA MENDOZA
+      notify_party: "SAME AS CONSIGNEE"
+      delivery_apply_to: |
+        ESKOLOR, SOCIEDAD ANONIMA
+        6TA CALLE 25-70 ZONA 4 EL NARANJO
+        BODEGA NO.1 MIXCO, GUATEMALA
+        TAX ID:3739964-0
+        TEL:(502)23062888 ATTN:PERLA MENDOZA
+    routing:
+      place_of_receipt: "KAOHSIUNG, TAIWAN"
+      port_of_loading: "KEELUNG, TAIWAN"
+      port_of_discharge: "PUERTO QUETZAL, GUATEMALA"
+      place_of_delivery: "PUERTO QUETZAL, GUATEMALA"
+    cargo:
+      description_raw: |
+        SHIPPER'S LOAD & COUNT S.T.C.
+        1X20ST CONTAINER SAID TO CONTAIN:
+        UV VARNISH
+        20 PLTS = 80 DRUMS
+      total_packages: "20"
+      package_type: "PALLETS"
+      gross_weight: "17760.000"
+      measurement: "25.000"
+    containers:
+      - container_no: "TRHU2244140"
+        seal_no: "TW49541AE"
+        container_type: "20GP"
+        package_count: "20"
+        package_type: "PALLETS"
+        gross_weight: "17760.000"
+        measurement: "25.000"
+        marks_and_numbers: |
+          ESKOLOR S.A.
+          UV VARNISH
+          MADE IN TAIWAN
+    charge_lines:
+      - description: "Basic Ocean Freight 20GP"
+        rate: "2400.00"
+        unit: "Per Container"
+        collect_amount: "2400.00"
+      - description: "Emergency Bunker Surcharge"
+        rate: "160.00"
+        unit: "Per Container"
+        collect_amount: "160.00"
+      - description: "Handling Fee"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "100.00"
+      - description: "Doc Fee Destination"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "100.00"
+      - description: "Destination Charges"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "600.00"

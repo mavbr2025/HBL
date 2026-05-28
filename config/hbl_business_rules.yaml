@@ -1,0 +1,17 @@
+party_blocks:
+  notify_party:
+    # Team-produced MTM HBLs use the consignee block unless operations provides
+    # an explicit MTM notify override. Agent HBL notify text is still extracted
+    # and traceable, but is not the default MTM HBL value.
+    default_source: "consignee"
+    allow_manual_override: true
+    warn_when_agent_notify_differs: true
+
+  delivery_apply_to:
+    default_source: "consignee"
+    allow_manual_override: true
+
+vessel_voyage:
+  primary_source: "clickup"
+  allow_agent_hbl_fallback: false
+  warn_when_missing_clickup: true

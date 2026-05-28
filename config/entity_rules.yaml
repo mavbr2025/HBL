@@ -1,0 +1,22 @@
+phase_1_allowed_owner_countries:
+  - Guatemala
+
+entity_by_owner_country:
+  Guatemala:
+    issuing_entity_name: "MTM Logix Guatemala"
+    issue_place: "GUATEMALA"
+    date_language: "es"
+    allowed_for_phase_1: true
+    header_below_logo:
+      start_cell: "H17"
+      lines:
+        - "MTM LOGIX GUATEMALA SOCIEDAD ANONIMA"
+        - "NIT: 109582985"
+        - "7A. AV. 131-78 ZONA 4"
+        - "EDIFICIO SEPTIMO, NIVEL 3, OFICINA 306"
+  Mexico:
+    allowed_for_phase_1: false
+  USA:
+    allowed_for_phase_1: false
+  Brazil:
+    allowed_for_phase_1: false

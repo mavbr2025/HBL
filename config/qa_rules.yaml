@@ -1,0 +1,56 @@
+draft_generation:
+  allowed_with_soft_warnings: true
+  final_generation_allowed_phase_1: false
+  block_draft_when:
+    - owner_country_missing
+    - owner_country_not_guatemala
+    - required_template_file_missing
+    - required_excel_cell_mapping_unresolved
+    - hbl_number_missing
+
+ocr:
+  low_confidence_threshold: 0.80
+
+hard_errors:
+  owner_country_missing: "Owner Country is missing."
+  owner_country_not_guatemala: "Owner Country is not Guatemala."
+  hbl_number_missing: "HBL number is missing."
+  mbl_number_missing: "MBL number is missing."
+  hbl_number_conflict: "HBL number conflicts between ClickUp and Agent HBL."
+  mbl_number_conflict: "MBL number conflicts between Carrier MBL and another source."
+  container_number_missing: "Container number is missing."
+  seal_number_missing: "Seal number is missing."
+  gross_weight_missing: "Gross weight is missing."
+  cbm_missing: "CBM is missing."
+  package_count_missing: "Package count is missing."
+  shipper_missing: "Shipper is missing."
+  consignee_missing: "Consignee is missing."
+  pol_missing: "POL is missing."
+  pod_missing: "POD is missing."
+  package_total_mismatch: "Total package count does not match sum of container package counts."
+  gross_weight_total_mismatch: "Total gross weight does not match sum of container gross weights."
+  cbm_total_mismatch: "Total CBM does not match sum of container CBM."
+  required_excel_cell_mapping_unresolved: "Required Excel cell mapping is unresolved."
+  required_template_file_missing: "Required template file is missing."
+
+soft_warnings:
+  notify_same_as_consignee: "Notify Party is SAME AS CONSIGNEE."
+  unusual_symbols_in_description: "Description contains unusual symbols."
+  long_address: "Address is very long."
+  vessel_voyage_not_validated_online: "Vessel/voyage could not be validated online in Phase 1."
+  low_document_quality: "Source document quality is low."
+  low_ocr_confidence: "OCR confidence is low."
+  clickup_rate_differs: "ClickUp rate differs from document rate."
+  freight_term_differs: "Freight term differs between ClickUp and Agent HBL."
+  routing_disagreement: "Agent HBL and Carrier MBL disagree on routing."
+  vessel_voyage_disagreement: "Agent HBL and Carrier MBL disagree on vessel/voyage."
+  container_data_disagreement: "Agent HBL and Carrier MBL disagree on containers, weights, packages, or CBM."
+  multiple_seals: "More than one seal exists for a container."
+  more_than_five_containers: "More than five containers require row insertion."
+  long_cargo_description: "Cargo description may exceed visible Excel cell space."
+  dangerous_goods_detected: "Dangerous goods detected."
+  reefer_cargo_detected: "Reefer cargo detected."
+  soc_container_detected: "SOC container detected."
+  transshipment_detected: "Transshipment vessel details detected."
+  multiple_commodities: "Multiple commodities detected."
+  multiple_hs_codes: "Multiple HS codes detected."

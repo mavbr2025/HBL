@@ -1,0 +1,102 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Identity",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3VerificationBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:HeadBucket",
+        "s3:GetBucketLocation",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:PutBucketVersioning",
+        "s3:GetBucketVersioning",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::mtm-hbl-documents-ENVIRONMENT-ACCOUNT_ID",
+        "arn:aws:s3:::mtm-hbl-documents-ENVIRONMENT-ACCOUNT_ID/*"
+      ]
+    },
+    {
+      "Sid": "DynamoDBVerificationTable",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/mtm-hbl-verification-ENVIRONMENT"
+    },
+    {
+      "Sid": "LambdaVerificationFunction",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:TagResource"
+      ],
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-verification-ENVIRONMENT"
+    },
+    {
+      "Sid": "ApiGatewayHttpApi",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:PATCH",
+        "apigateway:DELETE",
+        "apigateway:TagResource"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:REGION::/apis",
+        "arn:aws:apigateway:REGION::/apis/*"
+      ]
+    },
+    {
+      "Sid": "IamForLambdaExecutionRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:GetRole",
+        "iam:AttachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/mtm-hbl-verification-lambda-role-ENVIRONMENT"
+    },
+    {
+      "Sid": "AllowAttachBasicLambdaExecutionPolicy",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AttachRolePolicy"
+      ],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/mtm-hbl-verification-lambda-role-ENVIRONMENT",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        }
+      }
+    }
+  ]
+}

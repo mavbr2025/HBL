@@ -1,0 +1,81 @@
+fields:
+  legal_entity:
+    primary: clickup.owner_country
+    allowed_phase_1_values:
+      - Guatemala
+    on_missing: hard_error
+    on_out_of_scope: hard_error
+
+  hbl_number:
+    primary: clickup.hbl_number
+    primary_field_id: "8108af0b-9b7c-45aa-8d74-8e70567b93f0"
+    secondary: []
+    on_primary_blank_secondary_present: hard_error_ignore_secondary
+    on_missing: hard_error
+    on_conflict: hard_error
+
+  mbl_number:
+    primary: carrier_mbl.mbl_number
+    secondary:
+      - clickup.mbl_number
+      - agent_hbl.mbl_number
+    on_missing: hard_error
+    on_conflict: hard_error
+
+  shipper:
+    primary: agent_hbl.shipper
+    preserve_verbatim: true
+    on_missing: hard_error
+
+  consignee:
+    primary: agent_hbl.consignee
+    preserve_verbatim: true
+    on_missing: hard_error
+
+  notify_party:
+    primary: agent_hbl.notify_party
+    preserve_verbatim: true
+    on_same_as_consignee: soft_warning
+
+  cargo_description:
+    primary: agent_hbl.cargo_description
+    preserve_verbatim: true
+    no_rewrite: true
+    on_missing: hard_error
+
+origin_based_document_source:
+  usa_origin:
+    source_strategy: carrier_mbl_only
+    applies_to:
+      - shipper
+      - consignee
+      - notify_party
+      - delivery_apply_to
+      - cargo_description
+      - packages
+      - gross_weight
+      - cbm
+      - containers
+      - routing
+    rationale: "USA-origin HBLs are produced from the carrier MBL when no Agent HBL is provided."
+
+  routing:
+    primary: carrier_mbl
+    secondary:
+      - agent_hbl
+    on_mismatch: soft_warning
+
+  vessel_voyage:
+    primary: clickup.vessel_voyage
+    secondary:
+      - agent_hbl.vessel_voyage
+      - carrier_mbl.vessel_voyage
+    on_primary_blank_secondary_present: use_secondary_with_warning
+    on_conflict: soft_warning
+
+  freight_term:
+    primary: clickup.freight_term
+    secondary:
+      - agent_hbl.freight_term
+    on_missing: soft_warning
+    on_conflict: soft_warning

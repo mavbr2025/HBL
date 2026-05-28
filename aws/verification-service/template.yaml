@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: MTM HBL verification MVP.
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 10
+    MemorySize: 128
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+  HblDocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub mtm-hbl-documents-${Environment}-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  VerificationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub mtm-hbl-verification-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: verification_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: verification_id
+          KeyType: HASH
+
+  VerificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub mtm-hbl-verification-${Environment}
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref VerificationTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref VerificationTable
+      Events:
+        VerifyHtml:
+          Type: HttpApi
+          Properties:
+            Path: /verify/{verification_id}
+            Method: GET
+        VerifyJson:
+          Type: HttpApi
+          Properties:
+            Path: /api/verify/{verification_id}
+            Method: GET
+
+Outputs:
+  BucketName:
+    Value: !Ref HblDocumentsBucket
+  VerificationTableName:
+    Value: !Ref VerificationTable
+  VerificationApiUrl:
+    Value: !Sub https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com

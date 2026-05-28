@@ -1,0 +1,17 @@
+draft_customer_email:
+  phase_1_send_enabled: false
+  default_language: "es"
+  attach_only:
+    - draft_hbl_pdf
+  body_es: |
+    Buen día estimad@,
+
+    Les saludo con gusto, por favor encuentren adjunto el HBL Draft, de su apoyo con comentarios a fin de proceder a compartir el HBL final. La documentación final se compartirá una vez que se tenga la notificación de arribo de la naviera, lo cual es aproximadamente 24 hrs antes del arribo.
+
+    Aprovecho para solicitar por favor su apoyo indicando el transporte a ocupar para esta orden.
+
+    En caso de no tener respuesta en un periodo de 24 hrs se procederá con la impresión y cualquier modificación adicional tendrá un costo extra.
+
+    Quedamos atentos.
+
+    Cordialmente,

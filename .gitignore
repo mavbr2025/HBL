@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+runs/
+*.egg-info/
+.DS_Store
+tmp/
+output/
+password_site_inventory/
+tools/password_site_inventory.py
+aws/verification-service/.build/
+aws/verification-service/src/__pycache__/
+assets/signature.png
+samples/

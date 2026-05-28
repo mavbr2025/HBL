@@ -1,0 +1,154 @@
+template_rules:
+  inspect_before_writing: true
+  write_only_configured_cells: true
+  never_modify_master_template: true
+  never_overwrite_formulas_unless_explicitly_writable: true
+
+cells:
+  shipper:
+    cell: "B4"
+    writable: true
+    required: true
+    source_path: "parties.shipper.raw_text"
+  consignee:
+    cell: "B10"
+    writable: true
+    required: true
+    source_path: "parties.consignee.raw_text"
+  notify_party:
+    cell: "B17"
+    writable: true
+    required: true
+    source_path: "parties.notify_party.raw_text"
+  hbl_number:
+    cell: "H4"
+    writable: true
+    required: true
+    source_path: "shipment.mtm_hbl_no"
+  mbl_number:
+    cell: "K4"
+    writable: true
+    required: true
+    source_path: "shipment.mbl_no"
+  delivery_apply_to:
+    cell: "G24"
+    writable: true
+    required: true
+    source_path: "parties.consignee.raw_text"
+  place_of_receipt:
+    cell: "D24"
+    writable: true
+    required: true
+    source_path: "routing.place_of_receipt"
+  vessel_voyage:
+    cell: "B26"
+    writable: true
+    required: true
+    source_path: "shipment.vessel_voyage_display"
+  port_of_loading:
+    cell: "D26"
+    writable: true
+    required: true
+    source_path: "routing.port_of_loading"
+  port_of_discharge:
+    cell: "A28"
+    writable: true
+    required: true
+    source_path: "routing.port_of_discharge"
+  place_of_delivery:
+    cell: "D28"
+    writable: true
+    required: true
+    source_path: "routing.place_of_delivery"
+  cargo_description:
+    cell: "D32"
+    writable: true
+    required: true
+    source_path: "cargo.description_raw"
+  container_marks_start:
+    cell: "B37"
+    writable: true
+    required: true
+    source_path: "containers"
+  gross_weight_start:
+    cell: "J37"
+    writable: true
+    required: true
+    source_path: "containers"
+  measurement_start:
+    cell: "L37"
+    writable: true
+    required: true
+    source_path: "containers"
+  freight_and_charges:
+    cell: "B55"
+    writable: true
+    required: false
+    source_path: "charges.charge_description"
+  freight_rate:
+    cell: "D55"
+    writable: true
+    required: false
+    source_path: "charges.unit_rate"
+  freight_unit:
+    cell: "F55"
+    writable: true
+    required: false
+    source_path: "charges.unit"
+  freight_currency:
+    cell: "H55"
+    writable: true
+    required: false
+    source_path: "charges.currency"
+  prepaid_charges:
+    cell: "J55"
+    writable: true
+    required: false
+    source_path: "charges.prepaid_amount"
+  collect_charges:
+    cell: "L55"
+    writable: false
+    required: false
+    formula_expected: true
+    source_path: "charges.collect_amount"
+  document_status:
+    cell: "J62"
+    writable: true
+    required: true
+    value: "DRAFT"
+  freight_total_amount:
+    cell: "B65"
+    writable: false
+    required: false
+    formula_expected: true
+    source_path: "charges.total_freight"
+  freight_payable_at:
+    cell: "E65"
+    writable: true
+    required: false
+    source_path: "charges.freight_payable_at"
+  place_and_date_of_issue:
+    cell: "H65"
+    writable: true
+    required: true
+    source_path: "shipment.issue_place_date_display"
+  movement:
+    cell: "B67"
+    writable: true
+    required: false
+    source_path: "shipment.movement"
+  number_of_originals:
+    cell: "E67"
+    writable: true
+    required: false
+    source_path: "shipment.number_of_originals"
+  carrier_receipt:
+    cell: "C71"
+    writable: true
+    required: true
+    source_path: "carrier_receipt.display_text_line_1"
+  carrier_receipt_numeric:
+    cell: "C72"
+    writable: true
+    required: true
+    source_path: "carrier_receipt.display_text_line_2"

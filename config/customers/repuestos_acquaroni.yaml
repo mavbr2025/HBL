@@ -1,0 +1,499 @@
+customer:
+  name: "Repuesto Acquaroni"
+  folder_name: "Repuestos Acquaroni"
+  clickup_folder_id: "90172336859"
+
+clickup_fields:
+  agent_hbl_attachment: "4a9f5fbd-06e8-42fa-98d2-1f33d76c3ac2"
+  carrier_mbl_attachment: "c37a0b4a-886e-4ea7-8b9c-9118da9609bc"
+  finished_mtm_hbl_attachment: "fb02fca6-7626-4be9-9ba9-7a55c5b6684f"
+  vessel_voyage: "7082ebff-8d81-45b5-b88d-461683b6a174"
+
+party_rules:
+  notify_party: "same_as_consignee_when_agent_says_same"
+  delivery_apply_to: "consignee"
+
+party_overrides:
+  shipper:
+    - when_contains: "ZHEJIANG SENGEN AUTO PARTS"
+      raw_text: |
+        ZHEJIANG SENSEN AUTO PARTS CO., LTD.
+        DENGFENG RD., LUOFENG NORTH INDUSTRIAL ZONE,
+        TANGXIA, RUI'AN, ZHEJIANG, CHINA. 325204
+        TEL:+86-577-66002312 FAX:+86-577-65216889
+    - when_contains: "ZHEJIANG SENSEN AUTO PARTS"
+      raw_text: |
+        ZHEJIANG SENSEN AUTO PARTS CO., LTD.
+        DENGFENG RD., LUOFENG NORTH INDUSTRIAL ZONE,
+        TANGXIA, RUI'AN, ZHEJIANG, CHINA. 325204
+        TEL:+86-577-66002312 FAX:+86-577-65216889
+  consignee:
+    - when_contains: "SUPER AUTO REPUESTOS"
+      raw_text: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY, GUATEMALA, C.A.
+        TEL: (502) 2277-9717
+        FAX: (502) 2324-6464
+        NIT: 2629333-1
+
+charge_rules:
+  use_container_type_charge_rows: true
+  charge_rows:
+    "40HQ":
+      - description: "Basic Ocean Freight 40HC"
+        rate_source: "customer_or_clickup"
+        unit: "Per Container"
+        currency: "USD"
+      - description: "Equipment Handling Charge 40HC"
+        rate_source: "customer_or_clickup"
+        unit: "Per Container"
+        currency: "USD"
+      - description: "Destination THC 40HC"
+        rate_source: "customer_or_clickup"
+        unit: "Per Container"
+        currency: "USD"
+    "20GP":
+      - description: "Basic Ocean Freight 20HC"
+        rate_source: "customer_or_clickup"
+        unit: "Per Container"
+        currency: "USD"
+      - description: "Equipment Handling Charge 20HC"
+        rate_source: "customer_or_clickup"
+        unit: "Per Container"
+        currency: "USD"
+      - description: "Destination THC 20HC"
+        rate_source: "customer_or_clickup"
+        unit: "Per Container"
+        currency: "USD"
+
+learned_examples:
+  MTMLXGT-2258:
+    hbl_no: "CSA00049112"
+    learned_from_finished_hbl: true
+    vessel_voyage: "CAUQUENES 2521E"
+    issue_date: "GUATEMALA, 02 DE JUNIO DE 2025."
+    charge_lines:
+      - description: "Basic Ocean Freight 40HC"
+        rate: "2900.00"
+        collect_amount: "2900.00"
+      - description: "Equipment Handling Charge 40HC"
+        rate: "100.00"
+        collect_amount: "100.00"
+      - description: "Destination THC 40HC"
+        rate: "600.00"
+        collect_amount: "600.00"
+      - description: "Basic Ocean Freight 20HC"
+        rate: "2600.00"
+        collect_amount: "2600.00"
+      - description: "Equipment Handling Charge 20HC"
+        rate: "100.00"
+        collect_amount: "100.00"
+      - description: "Destination THC 20HC"
+        rate: "600.00"
+        collect_amount: "600.00"
+  MTMLXGT-2223:
+    hbl_no: "SYNNGB25SE06181701"
+    learned_from_finished_hbl: true
+    vessel_voyage: "ONE SPARKLE 2524E"
+    issue_date: "GUATEMALA, 17 DE JULIO DE 2025."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE"
+    charge_lines:
+      - description: "Basic Ocean Freight40HC"
+        rate: "6500.00"
+        unit: "Container"
+        collect_amount: "26000.00"
+      - description: "Equipment Handling Charge40HC"
+        rate: "100.00"
+        unit: "Container"
+        collect_amount: "400.00"
+      - description: "Destination THC"
+        rate: "600.00"
+        unit: "Container"
+        collect_amount: "2400.00"
+      - description: "Documentation Fee"
+        rate: "100.00"
+        unit: "Container"
+        collect_amount: "400.00"
+  MTMLXGT-21875:
+    hbl_no: "GOSZX26020701"
+    learned_from_finished_hbl: true
+    vessel_voyage: "YOKOHAMA EXPRESS 2608E"
+    issue_date: "GUATEMALA, 26 DE MARZO DE 2026."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE (3)"
+    freight_term: "FREIGHT COLLECT"
+    parties:
+      shipper: |
+        MOTORIX INTERNATIONAL, INC.
+        2-2-18 AWAZA, NISHI-KU
+        OSAKA 550-0011, JAPON
+      consignee: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A.AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY, GUATEMALA,C.A.
+        TEL : (502) 2277-9717
+        FAX: (502)2324-6464
+        NIT : 2629333-1
+      notify_party: "SAME AS CONSIGNEE"
+      delivery_apply_to: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A.AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY, GUATEMALA,C.A.
+        TEL : (502) 2277-9717
+        FAX: (502)2324-6464
+        NIT : 2629333-1
+    routing:
+      place_of_receipt: "KOBE,JAPON"
+      port_of_loading: "KOBE,JAPON"
+      port_of_discharge: "PUERTO QUETZAL, GUATEMALA"
+      place_of_delivery: "PUERTO QUETZAL, GUATEMALA"
+    cargo:
+      description_raw: |
+        (1X20'GP, 3X40'HQ) CONTAINERS S.T.C.
+        65 PALLET(S)
+        REPUESTOS PARA VEHICULOS
+      total_packages: "65"
+      package_type: "PALLETS"
+      gross_weight: "45309.00"
+      measurement: "85.190"
+    containers:
+      - container_no: "DRYU6047944"
+        seal_no: "JPE860042"
+        container_type: "40HQ"
+        package_count: "20"
+        package_type: "PALLETS"
+        gross_weight: "17743.00"
+        measurement: "25.746"
+        marks_and_numbers: |
+          RIXONA
+          AB-63464
+          ADUANA CENTRAL
+          GUATEMALA, C.A.
+          HECHO EN JAPON
+          NO. 31-34
+      - container_no: "TCLU1585789"
+        seal_no: "JPE859786"
+        container_type: "40HQ"
+        package_count: "20"
+        package_type: "PALLETS"
+        gross_weight: "14061.00"
+        measurement: "25.746"
+        marks_and_numbers: |
+          RIXONA
+          AB-63287
+          ADUANA CENTRAL
+          GUATEMALA, C.A.
+          HECHO EN JAPON
+          NO. 51-109
+      - container_no: "NYKU0772153"
+        seal_no: "JPE859978"
+        container_type: "40HQ"
+        package_count: "20"
+        package_type: "PALLETS"
+        gross_weight: "11012.00"
+        measurement: "25.960"
+        marks_and_numbers: |
+          RIXONA
+          AB-62321
+          ADUANA CENTRAL
+          GUATEMALA, C.A.
+          HECHO EN JAPON
+          NO. 1
+      - container_no: "DRYU3098320"
+        seal_no: "JPE860140"
+        container_type: "20GP"
+        package_count: "5"
+        package_type: "PALLETS"
+        gross_weight: "2493.00"
+        measurement: "7.738"
+        marks_and_numbers: |
+          RIXONA
+          AB-63649
+          ADUANA CENTRAL
+          GUATEMALA, C.A.
+          HECHO EN JAPON
+          NO. 1
+    charge_lines:
+      - description: "Basic Ocean Freight 40HC"
+        rate: "2350.00"
+        unit: "Per Container"
+        collect_amount: "7050.00"
+      - description: "Equipment Handling Charge 40HC"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "300.00"
+      - description: "Destination THC 40HC"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "1800.00"
+      - description: "Basic Ocean Freight 20HC"
+        rate: "2200.00"
+        unit: "Per Container"
+        collect_amount: "2200.00"
+      - description: "Equipment Handling Charge 20HC"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "100.00"
+      - description: "Destination THC 20HC"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "600.00"
+      - description: "Doc Fee Destination"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "400.00"
+  MTMLXGT-25736:
+    hbl_no: "WH26040010"
+    learned_from_finished_hbl: true
+    vessel_voyage: "NYK SILVIA 0437E"
+    issue_date: "GUATEMALA, 05 DE MAYO DE 2026."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE (3)"
+    freight_term: "FREIGHT COLLECT"
+    parties:
+      shipper: |
+        ZHEJIANG SENSEN AUTO PARTS CO., LTD.
+        DENGFENG RD., LUOFENG NORTH INDUSTRIAL ZONE, TANGXIA,
+        RUI'AN, ZHEJIANG, CHINA. 325204
+        TEL:+86-577-66002312 FAX:+86-577-65216989
+      consignee: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A.AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY,GUATEMALA,C.A.
+        TEL : (502) 2277-9717
+        FAX: (502)2324-6464
+        NIT: 2629333-1
+      notify_party: "SAME AS CONSIGNEE"
+      delivery_apply_to: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A.AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY,GUATEMALA,C.A.
+        TEL : (502) 2277-9717
+        FAX: (502)2324-6464
+        NIT: 2629333-1
+    routing:
+      place_of_receipt: "NINGBO, CHINA"
+      port_of_loading: "NINGBO, CHINA"
+      port_of_discharge: "PUERTO QUETZAL, GUATEMALA"
+      place_of_delivery: "PUERTO QUETZAL, GUATEMALA"
+    cargo:
+      description_raw: |
+        2X40 HC CONTAINER S.T.C.
+        1753 CARTON(S)
+        SHOCK ABSORBER
+      total_packages: "1753"
+      package_type: "CARTONS"
+      gross_weight: "37880.00"
+      measurement: "135.000"
+    containers:
+      - container_no: "ONEU0139712"
+        seal_no: "CNDW64211"
+        container_type: "40HQ"
+        package_count: "815"
+        package_type: "CARTONS"
+        gross_weight: "18525.000"
+        measurement: "67.500"
+        marks_and_numbers: |
+          SHOSEN
+          GUATEMALA,C.A.
+      - container_no: "TCNU4895912"
+        seal_no: "CNDW64205"
+        container_type: "40HQ"
+        package_count: "938"
+        package_type: "CARTONS"
+        gross_weight: "19355.000"
+        measurement: "67.500"
+        marks_and_numbers: |
+          SHOSEN
+          GUATEMALA,C.A.
+    charge_lines:
+      - description: "Basic Ocean Freight 40HC"
+        rate: "2500.00"
+        unit: "Per Container"
+        collect_amount: "5000.00"
+      - description: "Equipment Handling Charge 40HC"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "200.00"
+      - description: "Destination THC 40HC"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "1200.00"
+      - description: "Doc Fee"
+        rate: "100.00"
+        unit: "Per BL"
+        collect_amount: "200.00"
+  MTMLXGT-25972:
+    hbl_no: "GOSZX26041381"
+    learned_from_finished_hbl: false
+    approved_override: true
+    package_count_source: "total_only"
+    charge_source: "ClickUp pricing validation comments for MTMLXGT-25972"
+    vessel_voyage: "YM FOUNTAIN 184E"
+    issue_date: "GUATEMALA, 22 DE MAYO DE 2026."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE (3)"
+    freight_term: "FREIGHT COLLECT"
+    parties:
+      shipper: |
+        ZHEJIANG SENSEN AUTO PARTS CO., LTD.
+        DENGFENG RD., LUOFENG NORTH INDUSTRIAL ZONE,
+        TANGXIA, RUI'AN, ZHEJIANG, CHINA. 325204
+        TEL:+86-577-66002312 FAX:+86-577-65216889
+      consignee: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY, GUATEMALA, C.A.
+        TEL: (502) 2277-9717
+        FAX: (502) 2324-6464
+        NIT: 2629333-1
+      notify_party: "SAME AS CONSIGNEE"
+      delivery_apply_to: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY, GUATEMALA, C.A.
+        TEL: (502) 2277-9717
+        FAX: (502) 2324-6464
+        NIT: 2629333-1
+    routing:
+      place_of_receipt: "NINGBO, CHINA"
+      port_of_loading: "NINGBO, CHINA"
+      port_of_discharge: "PUERTO QUETZAL, GUATEMALA"
+      place_of_delivery: "PUERTO QUETZAL, GUATEMALA"
+    cargo:
+      description_raw: |
+        2X40'HQ CONTAINERS S.T.C.
+        1730 CARTON(S)
+        SHOCK ABSORBER
+      total_packages: "1730"
+      package_type: "CARTONS"
+      gross_weight: "37470.000"
+      measurement: "136.0000"
+    containers:
+      - container_no: "TXGU8147634"
+        seal_no: "WHLX752778"
+        container_type: "40HQ"
+        package_count: ""
+        package_type: "CARTONS"
+        gross_weight: "17720.000"
+        measurement: "68.0000"
+        marks_and_numbers: |
+          SHOSEN
+          GUATEMALA,C.A.
+      - container_no: "WHSU5177865"
+        seal_no: "WHLX752624"
+        container_type: "40HQ"
+        package_count: ""
+        package_type: "CARTONS"
+        gross_weight: "19750.000"
+        measurement: "68.0000"
+        marks_and_numbers: |
+          SHOSEN
+          GUATEMALA,C.A.
+    charge_lines:
+      - description: "Basic Ocean Freight 40HC"
+        rate: "3000.00"
+        unit: "Per Container"
+        collect_amount: "6000.00"
+      - description: "Equipment Handling Charge 40HC"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "200.00"
+      - description: "Destination THC 40HC"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "1200.00"
+      - description: "Doc Fee Destination"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "200.00"
+  MTMLXGT-25811:
+    hbl_no: "GOSZX26041381"
+    mbl_no: "031G533916"
+    learned_from_finished_hbl: false
+    approved_override: true
+    charge_source: "ClickUp pricing validation comments for MTMLXGT-25811"
+    vessel_voyage: "KOTA MANZANILLO / 025E"
+    issue_date: "GUATEMALA, 22 DE MAYO DE 2026."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE (3)"
+    freight_term: "FREIGHT COLLECT"
+    parties:
+      shipper: |
+        ZHEJIANG SENSEN AUTO PARTS CO., LTD.
+        DENGFENG RD., LUOFENG NORTH INDUSTRIAL ZONE,
+        TANGXIA, RUI'AN, ZHEJIANG, CHINA. 325204
+        TEL:+86-577-66002312 FAX:+86-577-65216889
+      consignee: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY, GUATEMALA, C.A.
+        TEL: (502) 2277-9717
+        FAX: (502) 2324-6464
+        NIT: 2629333-1
+      notify_party: "SAME AS CONSIGNEE"
+      delivery_apply_to: |
+        SUPER AUTO REPUESTOS SOCIEDAD ANONIMA
+        7A AVENIDA 1-54, ZONA 4
+        GUATEMALA CITY, GUATEMALA, C.A.
+        TEL: (502) 2277-9717
+        FAX: (502) 2324-6464
+        NIT: 2629333-1
+    routing:
+      place_of_receipt: "NINGBO, CHINA"
+      port_of_loading: "NINGBO, CHINA"
+      port_of_discharge: "PUERTO QUETZAL, GUATEMALA"
+      place_of_delivery: "PUERTO QUETZAL, GUATEMALA"
+    cargo:
+      description_raw: |
+        (2X40'HQ) CONTAINERS S.T.C.
+        1730 CARTON(S)
+        SHOCK ABSORBER
+      total_packages: "1730"
+      package_type: "CARTONS"
+      gross_weight: "37470.000"
+      measurement: "136.0000"
+    containers:
+      - container_no: "TXGU8147634"
+        seal_no: "WHLX752778"
+        container_type: "40HQ"
+        package_count: "878"
+        package_type: "CARTONS"
+        gross_weight: "17720.000"
+        measurement: "68.0000"
+        marks_and_numbers: |
+          SHOSEN
+          GUATEMALA,C.A.
+      - container_no: "WHSU5177865"
+        seal_no: "WHLX752624"
+        container_type: "40HQ"
+        package_count: "852"
+        package_type: "CARTONS"
+        gross_weight: "19750.000"
+        measurement: "68.0000"
+        marks_and_numbers: |
+          SHOSEN
+          GUATEMALA,C.A.
+    charge_lines:
+      - description: "Basic Ocean Freight 40HC"
+        rate: "3000.00"
+        unit: "Per Container"
+        collect_amount: "6000.00"
+      - description: "Equipment Handling Charge 40HC"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "200.00"
+      - description: "Destination THC 40HC"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "1200.00"
+      - description: "Handling Fee"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "200.00"
+      - description: "Document Fee"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "200.00"

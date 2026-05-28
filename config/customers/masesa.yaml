@@ -1,0 +1,84 @@
+customer:
+  name: "Masesa"
+  folder_name: "MASESA"
+  clickup_folder_id: "90177406757"
+
+party_rules:
+  notify_party: "same_as_consignee_when_agent_says_same"
+  delivery_apply_to: "consignee"
+
+learned_examples:
+  MTMLXGT-25697:
+    hbl_no: "WH26040108"
+    mbl_no: "ONEYNB5BI2587400"
+    learned_from_finished_hbl: false
+    approved_override: false
+    charge_source: "ClickUp pricing validation comments and linked accepted quote MTMQUOTE-3194"
+    vessel_voyage: "HYUNDAI COURAGE / 123E"
+    issue_date: "GUATEMALA, 22 DE MAYO DE 2026."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE (3)"
+    freight_term: "FREIGHT COLLECT"
+    parties:
+      shipper: |
+        TAIZHOU ORIGIN POWER TECHNOLOGY CO.,LTD.
+        BUILDING 39, EAST YONGJIAO ROAD, JIANGKOU STREET,
+        HUANGYAN DISTRICT, TAIZHOU CITY, ZHEJIANG PROVINCE,CHINA
+      consignee: |
+        MOTOCOM S.A.
+        28 CALLE 09-19 ZONA 11, GUATEMALA, GUATEMALA
+      notify_party: "SAME AS CONSIGNEE"
+      delivery_apply_to: |
+        MOTOCOM S.A.
+        28 CALLE 09-19 ZONA 11, GUATEMALA, GUATEMALA
+    routing:
+      place_of_receipt: "NINGBO,CHINA"
+      port_of_loading: "NINGBO,CHINA"
+      port_of_discharge: "PUERTO QUETZAL,GUATEMALA"
+      place_of_delivery: "PUERTO QUETZAL,GUATEMALA"
+    cargo:
+      description_raw: |
+        1X40'HQ(FCL) CY-CY
+        MOTORCYCLE AND SPARE PARTS
+      total_packages: "119"
+      package_type: "CARTONS"
+      gross_weight: "11282.000"
+      measurement: "70.000"
+    containers:
+      - container_no: "ONEU6264990"
+        seal_no: "CNDY08644"
+        container_type: "40HQ"
+        package_count: "119"
+        package_type: "CARTONS"
+        gross_weight: "11282.000"
+        measurement: "70.000"
+        marks_and_numbers: "MRT"
+    charge_lines:
+      - description: "Basic Ocean Freight 40HC"
+        rate: "2900.00"
+        unit: "Per Container"
+        collect_amount: "2900.00"
+      - description: "Emergency Bunker Surcharge"
+        rate: "320.00"
+        unit: "Per Container"
+        collect_amount: "320.00"
+      - description: "Handling Fee"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "100.00"
+      - description: "Doc Fee Destination"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "100.00"
+      - description: "Destination Charges"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "600.00"
+      - description: "Inland Destination"
+        rate: "350.00"
+        unit: "Per Container"
+        collect_amount: "350.00"
+      - description: "Customs Broker Destination"
+        rate: "161.29"
+        unit: "Per BL"
+        collect_amount: "161.29"

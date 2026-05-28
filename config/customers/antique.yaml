@@ -1,0 +1,79 @@
+customer:
+  name: "Antique"
+  folder_name: "Antique"
+
+party_rules:
+  notify_party: "same_as_consignee_when_agent_says_same"
+  delivery_apply_to: "consignee"
+
+learned_examples:
+  MTMLXGT-25696:
+    hbl_no: "WH26040089"
+    mbl_no: "ONEYTAOG72023700"
+    learned_from_finished_hbl: false
+    approved_override: false
+    charge_source: "ClickUp quote MTMQUOTE-3405, linked quote MTMQUOTE-4115, and EBS validation comments"
+    vessel_voyage: "HYUNDAI COURAGE / 0123E"
+    issue_date: "GUATEMALA, 22 DE MAYO DE 2026."
+    movement: "FCL/FCL"
+    number_of_originals: "THREE (3)"
+    freight_term: "FREIGHT COLLECT"
+    parties:
+      shipper: |
+        XIAMEN FURTHER STONE CO.,LTD
+        ROOM 1502 HONGYE BUILDING NO.201 NORTH HUBIN
+        ROAD,XIAMEN CHINA
+      consignee: |
+        ANTIQUE, SOCIEDAD ANONIMA
+        NIT 4436846-1
+        13 AVENIDA 14-46 ZONA 1, BODEGA #69 ECOBODEGUITAS
+        GUATEMALA, GUATEMALA
+      notify_party: "SAME AS CONSIGNEE"
+      delivery_apply_to: |
+        ANTIQUE, SOCIEDAD ANONIMA
+        NIT 4436846-1
+        13 AVENIDA 14-46 ZONA 1, BODEGA #69 ECOBODEGUITAS
+        GUATEMALA, GUATEMALA
+    routing:
+      place_of_receipt: "QINGDAO,CHINA"
+      port_of_loading: "QINGDAO,CHINA"
+      port_of_discharge: "PUERTO QUETZAL,GUATEMALA"
+      place_of_delivery: "PUERTO QUETZAL,GUATEMALA"
+    cargo:
+      description_raw: |
+        1X20'GP(FCL) CY-CY
+        STONE PRODUCTS
+      total_packages: "7"
+      package_type: "PACKAGES"
+      gross_weight: "26300.000"
+      measurement: "20.000"
+    containers:
+      - container_no: "TRHU2483015"
+        seal_no: "CN44692AW"
+        container_type: "20GP"
+        package_count: "7"
+        package_type: "PACKAGES"
+        gross_weight: "26300.000"
+        measurement: "20.000"
+        marks_and_numbers: "FSM"
+    charge_lines:
+      - description: "Basic Ocean Freight 20GP"
+        rate: "3400.00"
+        unit: "Per Container"
+        collect_amount: "3400.00"
+      - description: "Emergency Bunker Surcharge"
+        rate: "160.00"
+        unit: "Per Container"
+        collect_amount: "160.00"
+      - description: "Handling Fee"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "100.00"
+      - description: "Doc Fee Destination"
+        rate: "100.00"
+        unit: "Per Container"
+        collect_amount: "100.00"
+      - description: "Destination Charges"
+        rate: "600.00"
+        unit: "Per Container"
+        collect_amount: "600.00"

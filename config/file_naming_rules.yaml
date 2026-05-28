@@ -1,0 +1,11 @@
+draft:
+  pattern: "Draft_{hbl_number}_v{version}.pdf"
+  phase_1_enabled: true
+
+populated_excel:
+  pattern: "Draft_{hbl_number}_v{version}.xlsx"
+  phase_1_enabled: true
+
+original:
+  pattern: "Original_{hbl_number}_v{version}.pdf"
+  phase_1_enabled: false

@@ -1,0 +1,123 @@
+owner_country:
+  field_name: "Owner Country"
+  required: true
+
+hbl_number:
+  field_id: "8108af0b-9b7c-45aa-8d74-8e70567b93f0"
+  required: true
+
+final_pdf:
+  field_id: "fb02fca6-7626-4be9-9ba9-7a55c5b6684f"
+  use_only_after_final_approval: true
+
+hbl_outputs:
+  draft_pdf:
+    field_id: "85b0aff3-ccc5-4f90-b625-ed55592e07b7"
+    field_name: "HBL Draft"
+  original_pdf:
+    field_id: "b7c70ef7-1c86-4c11-8022-a5c4913216ed"
+    field_name: "HBL Original"
+    use_only_after_final_approval: true
+
+approval:
+  field_names:
+    - "HBL Approval Status"
+    - "HBL Status"
+    - "Document Approval"
+    - "Approval Status"
+  approved_values:
+    - "Approved"
+    - "Ready to Issue"
+    - "Ready for Issuance"
+    - "Issue HBL"
+  draft_values:
+    - "Draft"
+    - "Pending"
+    - "Pending Approval"
+    - "Review Required"
+  require_approved_by: true
+  approved_by_field_names:
+    - "HBL Approved By"
+    - "Approved By"
+  require_approved_at: true
+  approved_at_field_names:
+    - "HBL Approved At"
+    - "Approved At"
+
+canonical_hbl_json:
+  field_names:
+    - "Canonical HBL JSON"
+    - "HBL Canonical JSON"
+    - "HBL Data JSON"
+    - "HBL Structured Data"
+  required_for_fast_path: false
+
+known_fields:
+  mbl_number:
+    field_name: "MBL No."
+    required: false
+  pol:
+    field_name: "POL"
+    required: false
+  pod:
+    field_name: "POD"
+    required: false
+  place_of_receipt:
+    field_name: "Place of receipt"
+    required: false
+  place_of_delivery:
+    field_name: "Place of delivery"
+    required: false
+  vessel_voyage:
+    field_name: "Vessel/Voyage"
+    required: false
+  container_count:
+    field_name: "Container count"
+    required: false
+  container_type:
+    field_name: "Container type"
+    required: false
+  freight_term:
+    field_name: "Freight/payment terms"
+    required: false
+  freight_rate:
+    field_names:
+      - "Ocean Freight Rate"
+      - "Freight Rate"
+      - "Rate"
+      - "Ocean Basic Freight"
+      - "Basic Ocean Freight"
+    required: false
+  freight_currency:
+    field_names:
+      - "Currency"
+      - "Freight Currency"
+    default: "USD"
+    required: false
+  freight_unit:
+    field_names:
+      - "Freight Unit"
+      - "Rate Unit"
+      - "Unit"
+    default: "Per Container"
+    required: false
+  freight_charge_description:
+    field_names:
+      - "Freight Charge Description"
+      - "Charge Description"
+    default: "Ocean Basic Freight"
+    required: false
+  freight_payable_at:
+    field_names:
+      - "Freight Payable At"
+      - "Payable At"
+    default: "GUATEMALA CITY, GUATEMALA"
+    required: false
+
+consignee_emails:
+  fields:
+    - "Consignee Email 1"
+    - "Consignee Email 2"
+    - "Consignee Email 3"
+    - "Consignee Email 4"
+    - "Consignee Email 5"
