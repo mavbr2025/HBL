@@ -42,6 +42,7 @@ class ClickUpHblGenerationResult(BaseModel):
     clickup_attachment_uploaded: bool = False
     clickup_output_field_id: str = ""
     clickup_comment_posted: bool = False
+    clickup_comment_assignee_id: str = ""
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -127,6 +128,7 @@ async def generate_hbl_from_clickup(
     clickup_attachment_uploaded = False
     clickup_output_field_id = ""
     clickup_comment_posted = False
+    clickup_comment_assignee_id = ""
     if attach_to_clickup:
         clickup_output_field_id = _output_field_id_for_mode(generated_mode, app_config)
         if clickup_output_field_id:
@@ -135,7 +137,12 @@ async def generate_hbl_from_clickup(
             await client.upload_attachment(task_id, str(pdf_path))
         clickup_attachment_uploaded = True
     if post_comment:
-        await client.post_comment(task_id, _comment_text(generated_mode, data, registration))
+        clickup_comment_assignee_id = _comment_assignee_id(task)
+        await client.post_comment(
+            task_id,
+            _comment_text(generated_mode, data, registration),
+            assignee_id=clickup_comment_assignee_id,
+        )
         clickup_comment_posted = True
 
     return ClickUpHblGenerationResult(
@@ -153,6 +160,7 @@ async def generate_hbl_from_clickup(
         clickup_attachment_uploaded=clickup_attachment_uploaded,
         clickup_output_field_id=clickup_output_field_id,
         clickup_comment_posted=clickup_comment_posted,
+        clickup_comment_assignee_id=clickup_comment_assignee_id,
         warnings=warnings,
     )
 
@@ -313,6 +321,13 @@ def _comment_text(generated_mode: str, data: CanonicalHblData, registration) -> 
             f"Verification: {first_url}"
         )
     return f"Draft HBL generated for {data.shipment.mtm_hbl_no}. Review required before issuance."
+
+
+def _comment_assignee_id(task: ClickUpTaskData) -> str:
+    for assignee in task.assignees:
+        if assignee.id:
+            return assignee.id
+    return ""
 
 
 def _output_field_id_for_mode(generated_mode: str, app_config: AppConfig) -> str:

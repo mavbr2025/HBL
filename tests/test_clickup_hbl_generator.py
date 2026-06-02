@@ -6,7 +6,7 @@ from mtm_hbl.clickup_hbl_generator import (
     parse_clickup_task_id,
 )
 from mtm_hbl.config import AppConfig, Settings
-from mtm_hbl.models.clickup import ClickUpCustomField, ClickUpTaskData
+from mtm_hbl.models.clickup import ClickUpCustomField, ClickUpTaskData, ClickUpUser
 from tests.test_hbl_package_pdf import package_data
 
 
@@ -17,6 +17,7 @@ class FakeClickUpClient:
         self.uploaded = False
         self.output_field_id = ""
         self.commented = False
+        self.comment_assignee_id = ""
 
     async def get_task(self, task_id: str) -> ClickUpTaskData:
         assert task_id == self.task.id
@@ -34,8 +35,16 @@ class FakeClickUpClient:
         self.output_field_id = field_id
         return {"id": "attachment.pdf"}
 
-    async def post_comment(self, task_id: str, comment_text: str):
+    async def post_comment(
+        self,
+        task_id: str,
+        comment_text: str,
+        *,
+        assignee_id: str = "",
+        notify_all: bool = False,
+    ):
         self.commented = True
+        self.comment_assignee_id = assignee_id
         return {}
 
 
@@ -178,3 +187,39 @@ def test_clickup_attachment_uses_draft_output_field(tmp_path, app_config):
     assert result.clickup_attachment_uploaded is True
     assert result.clickup_output_field_id == "85b0aff3-ccc5-4f90-b625-ed55592e07b7"
     assert client.output_field_id == "85b0aff3-ccc5-4f90-b625-ed55592e07b7"
+
+
+def test_generated_comment_is_assigned_to_task_assignee(tmp_path, app_config):
+    data = package_data()
+    task = ClickUpTaskData(
+        id="task-1",
+        assignees=[ClickUpUser(id="12345", username="Operator")],
+        custom_fields=[
+            ClickUpCustomField(
+                id="canonical",
+                name="Canonical HBL JSON",
+                value=data.model_dump_json(),
+            ),
+            ClickUpCustomField(id="approval", name="HBL Approval Status", value="Pending Approval"),
+        ],
+    )
+    client = FakeClickUpClient(
+        task,
+        {"hbl_number": "WH26040006", "owner_country": "Guatemala"},
+    )
+
+    result = asyncio.run(
+        generate_hbl_from_clickup(
+            task_ref="task-1",
+            client=client,
+            settings=Settings(runs_dir=tmp_path),
+            app_config=app_config,
+            mode="auto",
+            output_dir=tmp_path,
+            post_comment=True,
+        )
+    )
+
+    assert result.clickup_comment_posted is True
+    assert result.clickup_comment_assignee_id == "12345"
+    assert client.comment_assignee_id == "12345"

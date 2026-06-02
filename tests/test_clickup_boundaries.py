@@ -66,3 +66,18 @@ def test_clickup_configured_field_extraction_reads_freight_rate_alias(app_config
     assert values["freight_rate"] == "$3,000.00"
     assert values["freight_currency"] == "USD"
     assert values["freight_unit"] == "Per Container"
+
+
+def test_clickup_task_parser_reads_assignees():
+    task = ClickUpClient._parse_task(
+        {
+            "id": "task-1",
+            "assignees": [
+                {"id": 12345, "username": "Operator", "email": "operator@example.com"},
+            ],
+        }
+    )
+
+    assert len(task.assignees) == 1
+    assert task.assignees[0].id == "12345"
+    assert task.assignees[0].username == "Operator"

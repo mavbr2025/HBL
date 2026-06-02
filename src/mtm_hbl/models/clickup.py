@@ -14,11 +14,18 @@ class ClickUpAttachment(BaseModel):
     extension: str = ""
 
 
+class ClickUpUser(BaseModel):
+    id: str = ""
+    username: str = ""
+    email: str = ""
+
+
 class ClickUpTaskData(BaseModel):
     id: str
     name: str = ""
     status: str = ""
     description: str = ""
+    assignees: list[ClickUpUser] = Field(default_factory=list)
     custom_fields: list[ClickUpCustomField] = Field(default_factory=list)
     attachments: list[ClickUpAttachment] = Field(default_factory=list)
 

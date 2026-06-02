@@ -3,7 +3,7 @@ from typing import Any
 import httpx
 
 from mtm_hbl.config import AppConfig, Settings
-from mtm_hbl.models.clickup import ClickUpAttachment, ClickUpCustomField, ClickUpTaskData
+from mtm_hbl.models.clickup import ClickUpAttachment, ClickUpCustomField, ClickUpTaskData, ClickUpUser
 
 
 class ClickUpClient:
@@ -23,9 +23,20 @@ class ClickUpClient:
             data = response.json()
         return self._parse_task(data)
 
-    async def post_comment(self, task_id: str, comment_text: str) -> dict[str, Any]:
+    async def post_comment(
+        self,
+        task_id: str,
+        comment_text: str,
+        *,
+        assignee_id: str = "",
+        notify_all: bool = False,
+    ) -> dict[str, Any]:
         url = f"{self.settings.clickup_api_base_url}/task/{task_id}/comment"
-        payload = {"comment_text": comment_text}
+        payload: dict[str, Any] = {"comment_text": comment_text}
+        if assignee_id:
+            payload["assignee"] = int(assignee_id) if assignee_id.isdigit() else assignee_id
+        if notify_all:
+            payload["notify_all"] = True
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(url, headers=self.headers, json=payload)
             response.raise_for_status()
@@ -168,11 +179,21 @@ class ClickUpClient:
             )
             for attachment in data.get("attachments", [])
         ]
+        assignees = [
+            ClickUpUser(
+                id=str(user.get("id", "")),
+                username=str(user.get("username", "") or user.get("name", "")),
+                email=str(user.get("email", "")),
+            )
+            for user in data.get("assignees", [])
+            if isinstance(user, dict)
+        ]
         return ClickUpTaskData(
             id=str(data.get("id", "")),
             name=str(data.get("name", "")),
             status=str((data.get("status") or {}).get("status", "")),
             description=str(data.get("description", "") or data.get("text_content", "") or ""),
+            assignees=assignees,
             custom_fields=custom_fields,
             attachments=attachments,
         )
