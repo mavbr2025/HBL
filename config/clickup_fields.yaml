@@ -25,11 +25,13 @@ approval:
     - "HBL Status"
     - "Document Approval"
     - "Approval Status"
+    - "Approved for Original"
   approved_values:
     - "Approved"
     - "Ready to Issue"
     - "Ready for Issuance"
     - "Issue HBL"
+    - "true"
   draft_values:
     - "Draft"
     - "Pending"

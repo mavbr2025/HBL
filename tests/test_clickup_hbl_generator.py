@@ -70,6 +70,22 @@ def test_evaluate_hbl_approval_uses_configured_field(app_config):
     assert decision.approval_value == "Ready to Issue"
 
 
+def test_evaluate_hbl_approval_accepts_approved_for_original_boolean(app_config):
+    task = ClickUpTaskData(
+        id="task-1",
+        custom_fields=[
+            ClickUpCustomField(id="approval", name="Approved for Original", value=True),
+            ClickUpCustomField(id="approved-by", name="Approved By", value="Operator"),
+            ClickUpCustomField(id="approved-at", name="Approved At", value="2026-06-03"),
+        ],
+    )
+
+    decision = evaluate_hbl_approval(task, app_config)
+
+    assert decision.approved is True
+    assert decision.approval_value == "True"
+
+
 def test_generate_from_clickup_creates_one_page_draft_when_not_approved(tmp_path, app_config):
     data = package_data()
     task = ClickUpTaskData(
