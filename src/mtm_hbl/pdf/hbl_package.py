@@ -30,10 +30,11 @@ PAGE_SIZE = letter
 PAGE_WIDTH, PAGE_HEIGHT = PAGE_SIZE
 MARGIN = 10 * MM
 HEADER_HEIGHT = 118
-PARTY_HEIGHT = 165
+PARTY_HEIGHT = 195
+SHIPPER_BLOCK_HEIGHT = 55
 ROUTING_HEIGHT = 43
 CARGO_TITLE_HEIGHT = 17
-CARGO_TABLE_HEIGHT = 248
+CARGO_TABLE_HEIGHT = 218
 CARGO_HEADER_HEIGHT = 24
 CARGO_TOTAL_HEIGHT = 23
 DESCRIPTION_FONT_SIZE = 7.2
@@ -527,24 +528,28 @@ class BillOfLadingPackageRenderer:
         return ImageReader(image)
 
     def _draw_party_section(self, y_top: float) -> float:
-        height = 165
+        height = PARTY_HEIGHT
         y_bottom = y_top - height
         x_mid = self.left + self.width * 0.50
         self._section_box(self.left, y_bottom, self.width, height)
         self._vline(x_mid, y_bottom, height, 0.6)
 
-        box_h = height / 3
-        for index, (label, text) in enumerate(
-            [
-                ("SHIPPER", self.data.parties.shipper.raw_text),
-                ("CONSIGNEE", self.data.parties.consignee.raw_text),
-                ("NOTIFY PARTY", self.data.parties.notify_party.raw_text or "SAME AS CONSIGNEE"),
-            ]
-        ):
-            box_top = y_top - (index * box_h)
+        consignee_block_height = (height - SHIPPER_BLOCK_HEIGHT) / 2
+        blocks = [
+            ("SHIPPER", self.data.parties.shipper.raw_text, SHIPPER_BLOCK_HEIGHT),
+            ("CONSIGNEE", self.data.parties.consignee.raw_text, consignee_block_height),
+            (
+                "NOTIFY PARTY",
+                self.data.parties.notify_party.raw_text or "SAME AS CONSIGNEE",
+                consignee_block_height,
+            ),
+        ]
+        box_top = y_top
+        for index, (label, text, box_h) in enumerate(blocks):
             if index:
                 self._hline(self.left, box_top, self.width * 0.50, 0.45)
             self._draw_labeled_block(self.left, box_top - box_h, self.width * 0.50, box_h, label, text)
+            box_top -= box_h
 
         delivery = (
             self.data.parties.delivery_apply_to.raw_text

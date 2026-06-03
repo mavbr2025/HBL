@@ -106,6 +106,35 @@ def test_hbl_draft_generates_one_page_without_qr_verification(tmp_path):
     assert "COPY 1/3" not in text
 
 
+def test_party_blocks_show_five_consignee_and_notify_lines(tmp_path):
+    data = package_data()
+    data.parties.consignee.raw_text = "\n".join(
+        [
+            "CONSIGNEE LEGAL NAME",
+            "CONSIGNEE ADDRESS LINE 1",
+            "CONSIGNEE ADDRESS LINE 2",
+            "CONSIGNEE TAX ID LINE",
+            "CONSIGNEE PHONE LINE",
+        ]
+    )
+    data.parties.notify_party.raw_text = "\n".join(
+        [
+            "NOTIFY LEGAL NAME",
+            "NOTIFY ADDRESS LINE 1",
+            "NOTIFY ADDRESS LINE 2",
+            "NOTIFY TAX ID LINE",
+            "NOTIFY PHONE LINE",
+        ]
+    )
+    output = tmp_path / "party-lines.pdf"
+
+    generate_bill_of_lading_draft(data, output)
+
+    text = PdfReader(str(output)).pages[0].extract_text()
+    assert "CONSIGNEE PHONE LINE" in text
+    assert "NOTIFY PHONE LINE" in text
+
+
 def test_long_description_generates_continuation_pages_without_shrinking(tmp_path):
     data = package_data()
     data.cargo.description_raw = "\n".join(
