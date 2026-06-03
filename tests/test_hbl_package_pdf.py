@@ -246,6 +246,17 @@ def test_hbl_package_uses_freight_forwarder_terminology(tmp_path):
     assert "Freight payable at" not in text
 
 
+def test_hbl_package_allows_zero_originals_label(tmp_path):
+    data = package_data()
+    data.shipment.number_of_originals = "ZERO (0)"
+    output = tmp_path / "zero-originals.pdf"
+
+    generate_bill_of_lading_package(data, output)
+
+    text = "\n".join(page.extract_text() for page in PdfReader(str(output)).pages)
+    assert "No. of original B(s)/L: ZERO (0)" in text
+
+
 def test_hbl_package_rejects_charge_with_prepaid_and_collect(tmp_path):
     data = package_data()
     data.charges.line_items[0].prepaid_amount = "5000.00"

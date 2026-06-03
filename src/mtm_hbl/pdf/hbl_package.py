@@ -63,7 +63,7 @@ REQUIRED_TERMS = [
     "For MTM Logix Guatemala Sociedad Anonima",
     "Goods to be delivered to:",
     "Shipper's load, stow, count and seal. Particulars furnished by shipper.",
-    "No. of original B(s)/L: THREE(3)",
+    "No. of original B(s)/L:",
 ]
 
 
