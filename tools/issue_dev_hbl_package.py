@@ -4,7 +4,9 @@ import argparse
 import json
 import os
 from pathlib import Path
+from uuid import uuid4
 
+from mtm_hbl.clickup_hbl_generator import _verification_id_suffix
 from mtm_hbl.models.canonical import CanonicalHblData
 from mtm_hbl.pdf.hbl_package import generate_bill_of_lading_package
 from mtm_hbl.verification.aws_repository import AwsVerificationConfig, register_issued_package
@@ -44,6 +46,8 @@ def main() -> None:
     review_path = Path(args.review_json)
     output_pdf = Path(args.output_pdf)
     data = CanonicalHblData.model_validate_json(review_path.read_text(encoding="utf-8"))
+    package_id = args.package_id or f"pkg_{uuid4().hex}"
+    verification_id_suffix = _verification_id_suffix(package_id)
 
     generate_bill_of_lading_package(
         data,
@@ -51,6 +55,7 @@ def main() -> None:
         logo_path=Path(args.logo_path),
         draft=False,
         verification_base_url=args.api_base_url,
+        verification_id_suffix=verification_id_suffix,
     )
     registration = register_issued_package(
         data,
@@ -62,7 +67,8 @@ def main() -> None:
             verification_base_url=args.api_base_url,
         ),
         status=args.status,
-        package_id=args.package_id,
+        package_id=package_id,
+        verification_id_suffix=verification_id_suffix,
         issued_by=args.issued_by,
     )
 

@@ -1,5 +1,6 @@
 import uvicorn
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import RedirectResponse
@@ -12,7 +13,11 @@ from mtm_hbl.clickup_connector.oauth import (
     OAuthStateStore,
 )
 from mtm_hbl.config import AppConfig, Settings, get_settings
-from mtm_hbl.clickup_hbl_generator import GenerationMode, generate_hbl_from_clickup
+from mtm_hbl.clickup_hbl_generator import (
+    GenerationMode,
+    _verification_id_suffix,
+    generate_hbl_from_clickup,
+)
 from mtm_hbl.models.canonical import CanonicalHblData
 from mtm_hbl.local_review import build_local_review
 from mtm_hbl.pipeline import PipelineInput, build_review_packet
@@ -345,12 +350,15 @@ def issue_dev_package(
             detail=f"Missing verification configuration: {', '.join(missing)}",
         )
 
+    package_id = request.package_id or f"pkg_{uuid4().hex}"
+    verification_id_suffix = _verification_id_suffix(package_id)
     package_path = generate_bill_of_lading_package(
         data,
         output_path,
         logo_path=Path(request.logo_path) if request.logo_path else None,
         draft=request.draft,
         verification_base_url=verification_base_url,
+        verification_id_suffix=verification_id_suffix,
     )
     registration = register_issued_package(
         data,
@@ -362,7 +370,8 @@ def issue_dev_package(
             verification_base_url=verification_base_url,
         ),
         status=request.status,
-        package_id=request.package_id,
+        package_id=package_id,
+        verification_id_suffix=verification_id_suffix,
         issued_by=request.issued_by,
     )
 

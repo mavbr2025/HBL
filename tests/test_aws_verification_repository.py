@@ -2,7 +2,11 @@ from pathlib import Path
 
 import boto3
 
-from mtm_hbl.verification.aws_repository import AwsVerificationConfig, register_issued_package
+from mtm_hbl.verification.aws_repository import (
+    AwsVerificationConfig,
+    register_issued_package,
+    void_verification_records,
+)
 from tests.test_hbl_package_pdf import package_data
 from mtm_hbl.pdf.hbl_package import generate_bill_of_lading_package
 
@@ -29,9 +33,13 @@ class FakeS3Client:
 class FakeTable:
     def __init__(self) -> None:
         self.items = []
+        self.updates = []
 
     def put_item(self, Item):
         self.items.append(Item)
+
+    def update_item(self, **kwargs):
+        self.updates.append(kwargs)
 
 
 class FakeDynamoResource:
@@ -84,3 +92,55 @@ def test_register_issued_package_uploads_encrypted_private_artifacts(monkeypatch
     )
     assert registration.pdf_sha256
     assert registration.canonical_json_sha256
+
+
+def test_register_issued_package_can_use_unique_verification_suffix(monkeypatch, tmp_path):
+    data = package_data()
+    pdf_path = tmp_path / "HBL_Package_WH26040006.pdf"
+    generate_bill_of_lading_package(
+        data,
+        pdf_path,
+        verification_base_url="https://verify.example.com/",
+        verification_id_suffix="ABCD1234",
+    )
+    fake_s3 = FakeS3Client()
+    fake_table = FakeTable()
+    monkeypatch.setattr(boto3, "client", lambda service, region_name=None: fake_s3)
+    monkeypatch.setattr(
+        boto3,
+        "resource",
+        lambda service, region_name=None: FakeDynamoResource(fake_table),
+    )
+
+    registration = register_issued_package(
+        data,
+        pdf_path,
+        AwsVerificationConfig("test-bucket", "test-table", verification_base_url="https://verify.example.com/"),
+        package_id="pkg_test",
+        verification_id_suffix="ABCD1234",
+    )
+
+    assert "WH26040006-O1-ABCD1234" in registration.verification_urls
+    assert fake_table.items[0]["verification_id"] == "WH26040006-O1-ABCD1234"
+    assert fake_table.items[0]["verification_id_suffix"] == "ABCD1234"
+
+
+def test_void_verification_records_marks_records_void(monkeypatch):
+    fake_table = FakeTable()
+    monkeypatch.setattr(
+        boto3,
+        "resource",
+        lambda service, region_name=None: FakeDynamoResource(fake_table),
+    )
+
+    void_verification_records(
+        AwsVerificationConfig("test-bucket", "test-table"),
+        ["WH26040006-O1"],
+        superseded_by="pkg_new",
+    )
+
+    assert len(fake_table.updates) == 1
+    update = fake_table.updates[0]
+    assert update["Key"] == {"verification_id": "WH26040006-O1"}
+    assert update["ExpressionAttributeValues"][":status"] == "VOID"
+    assert update["ExpressionAttributeValues"][":superseded_by"] == "pkg_new"

@@ -4,6 +4,7 @@ import json
 import re
 from pathlib import Path
 from typing import Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -101,6 +102,8 @@ async def generate_hbl_from_clickup(
         table = table or settings.hbl_verification_table
         region = region or settings.aws_region
         _require_issuance_config(verification_base_url, bucket, table)
+        package_id = f"pkg_{uuid4().hex}"
+        verification_id_suffix = _verification_id_suffix(package_id)
         pdf_path = base_output_dir / f"HBL_Package_{data.shipment.mtm_hbl_no}.pdf"
         generate_bill_of_lading_package(
             data,
@@ -108,6 +111,7 @@ async def generate_hbl_from_clickup(
             logo_path=logo_path,
             draft=False,
             verification_base_url=verification_base_url,
+            verification_id_suffix=verification_id_suffix,
         )
         registration = register_issued_package(
             data,
@@ -119,6 +123,8 @@ async def generate_hbl_from_clickup(
                 verification_base_url=verification_base_url,
             ),
             status="ISSUED",
+            package_id=package_id,
+            verification_id_suffix=verification_id_suffix,
             issued_by=issued_by,
         )
     else:
@@ -133,6 +139,7 @@ async def generate_hbl_from_clickup(
         clickup_output_field_id = _output_field_id_for_mode(generated_mode, app_config)
         if clickup_output_field_id:
             await client.upload_attachment_to_custom_field(task_id, clickup_output_field_id, str(pdf_path))
+            await client.verify_attachment_custom_field(task_id, clickup_output_field_id, pdf_path.name)
         else:
             await client.upload_attachment(task_id, str(pdf_path))
         clickup_attachment_uploaded = True
@@ -328,6 +335,11 @@ def _comment_assignee_id(task: ClickUpTaskData) -> str:
         if assignee.id:
             return assignee.id
     return ""
+
+
+def _verification_id_suffix(package_id: str) -> str:
+    compact = re.sub(r"[^A-Za-z0-9]", "", package_id.replace("pkg_", ""))
+    return compact[:8].upper()
 
 
 def _output_field_id_for_mode(generated_mode: str, app_config: AppConfig) -> str:

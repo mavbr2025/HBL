@@ -35,6 +35,9 @@ class FakeClickUpClient:
         self.output_field_id = field_id
         return {"id": "attachment.pdf"}
 
+    async def verify_attachment_custom_field(self, task_id: str, field_id: str, expected_filename: str):
+        assert field_id == self.output_field_id
+
     async def post_comment(
         self,
         task_id: str,

@@ -43,6 +43,7 @@ def register_issued_package(
     *,
     status: str = "ISSUED",
     package_id: str | None = None,
+    verification_id_suffix: str = "",
     issued_by: str = "Andrea Piedad Velasquez Castellon",
 ) -> IssuedPackageRegistration:
     if not pdf_path.exists():
@@ -98,8 +99,13 @@ def register_issued_package(
     verification_urls: dict[str, str] = {}
     normalized_status = status.upper()
     for page_config in build_document_page_set(data):
-        verification_id = verification_id_for_page(data, page_config)
-        verification_url = verification_url_for_page(data, page_config, config.verification_base_url)
+        verification_id = verification_id_for_page(data, page_config, suffix=verification_id_suffix)
+        verification_url = verification_url_for_page(
+            data,
+            page_config,
+            config.verification_base_url,
+            suffix=verification_id_suffix,
+        )
         verification_urls[verification_id] = verification_url
         table.put_item(
             Item={
@@ -114,6 +120,7 @@ def register_issued_package(
                 "page_number": page_config.page_number,
                 "page_total": page_config.page_total,
                 "status": normalized_status,
+                "verification_id_suffix": verification_id_suffix,
                 "pdf_s3_key": pdf_s3_key,
                 "canonical_json_s3_key": canonical_json_s3_key,
                 "pdf_sha256": pdf_digest,
@@ -134,6 +141,33 @@ def register_issued_package(
         canonical_json_sha256=canonical_digest,
         verification_urls=verification_urls,
     )
+
+
+def void_verification_records(
+    config: AwsVerificationConfig,
+    verification_ids: list[str],
+    *,
+    superseded_by: str = "",
+    reason: str = "Replacement original issued.",
+) -> None:
+    dynamodb = boto3.resource("dynamodb", region_name=config.region_name)
+    table = dynamodb.Table(config.table_name)
+    voided_at = datetime.now(timezone.utc).isoformat()
+    for verification_id in verification_ids:
+        table.update_item(
+            Key={"verification_id": verification_id},
+            UpdateExpression=(
+                "SET #status = :status, voided_at = :voided_at, "
+                "superseded_by = :superseded_by, void_reason = :reason"
+            ),
+            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeValues={
+                ":status": "VOID",
+                ":voided_at": voided_at,
+                ":superseded_by": superseded_by,
+                ":reason": reason,
+            },
+        )
 
 
 def _issue_year(data: CanonicalHblData) -> str:

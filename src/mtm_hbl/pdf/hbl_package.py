@@ -245,6 +245,7 @@ def generate_bill_of_lading_package(
     logo_path: Path | None = None,
     draft: bool = False,
     verification_base_url: str = "",
+    verification_id_suffix: str = "",
 ) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pdf = canvas.Canvas(str(output_path), pagesize=PAGE_SIZE)
@@ -254,6 +255,7 @@ def generate_bill_of_lading_package(
         logo_path=logo_path,
         draft=draft,
         verification_base_url=verification_base_url,
+        verification_id_suffix=verification_id_suffix,
     )
 
     cargo_pages = split_cargo_pages(data)
@@ -359,20 +361,29 @@ def _normalize_pdf_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
-def verification_id_for_page(data: CanonicalHblData, page_config: DocumentPageConfig) -> str:
+def verification_id_for_page(
+    data: CanonicalHblData,
+    page_config: DocumentPageConfig,
+    *,
+    suffix: str = "",
+) -> str:
     hbl = data.shipment.mtm_hbl_no or "UNKNOWN"
-    suffix = f"{page_config.type[0]}{page_config.sequence}"
+    page_suffix = f"{page_config.type[0]}{page_config.sequence}"
     if page_config.page_total > 1:
-        suffix = f"{suffix}-P{page_config.page_number}"
-    return f"{hbl}-{suffix}"
+        page_suffix = f"{page_suffix}-P{page_config.page_number}"
+    if suffix:
+        page_suffix = f"{page_suffix}-{suffix}"
+    return f"{hbl}-{page_suffix}"
 
 
 def verification_url_for_page(
     data: CanonicalHblData,
     page_config: DocumentPageConfig,
     verification_base_url: str,
+    *,
+    suffix: str = "",
 ) -> str:
-    verification_id = verification_id_for_page(data, page_config)
+    verification_id = verification_id_for_page(data, page_config, suffix=suffix)
     if not verification_base_url:
         return verification_id
     return f"{verification_base_url.rstrip('/')}/verify/{verification_id}"
@@ -388,6 +399,7 @@ class BillOfLadingPackageRenderer:
         draft: bool = False,
         verification_base_url: str = "",
         include_verification: bool = True,
+        verification_id_suffix: str = "",
     ) -> None:
         self.pdf = pdf
         self.data = data
@@ -395,6 +407,8 @@ class BillOfLadingPackageRenderer:
         self.draft = draft
         self.verification_base_url = verification_base_url
         self.include_verification = include_verification
+        self.verification_id_suffix = verification_id_suffix
+        self.issued_at = datetime.now().astimezone()
         self.left = MARGIN
         self.bottom = MARGIN
         self.width = PAGE_WIDTH - (2 * MARGIN)
@@ -835,7 +849,7 @@ class BillOfLadingPackageRenderer:
         right_x = x_mid + 5
         if not self.draft:
             self._text(right_x, y, "PLACE AND DATE OF ISSUE", FONT_BOLD, 7.0)
-            self._text(right_x, y - 13, self.data.shipment.issue_date, FONT, 7.4)
+            self._text(right_x, y - 13, self._issued_place_datetime(), FONT, 7.4)
         qr_size = 34
         qr_column_w = 62
         qr_center_x = x_mid + right_w - (qr_column_w / 2) - 6
@@ -884,6 +898,11 @@ class BillOfLadingPackageRenderer:
             max_lines=5,
         )
 
+    def _issued_place_datetime(self) -> str:
+        place = (self.data.shipment.issue_place or "GUATEMALA").strip().upper()
+        issued_at = self.issued_at.strftime("%d-%b-%Y %H:%M").upper()
+        return f"{place}, {issued_at}"
+
     def _draw_signature_image(
         self,
         x: float,
@@ -925,11 +944,16 @@ class BillOfLadingPackageRenderer:
         page_config: DocumentPageConfig,
     ) -> None:
         x = center_x - size / 2
-        verification_id = verification_id_for_page(self.data, page_config)
+        verification_id = verification_id_for_page(
+            self.data,
+            page_config,
+            suffix=self.verification_id_suffix,
+        )
         verification_url = verification_url_for_page(
             self.data,
             page_config,
             self.verification_base_url,
+            suffix=self.verification_id_suffix,
         )
         qr = qrcode.QRCode(
             version=1,

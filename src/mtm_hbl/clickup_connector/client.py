@@ -1,4 +1,5 @@
 from typing import Any
+import asyncio
 
 import httpx
 
@@ -77,6 +78,27 @@ class ClickUpClient:
             response = await client.post(url, headers=self.headers, json=payload)
             response.raise_for_status()
         return attachment
+
+    async def verify_attachment_custom_field(
+        self,
+        task_id: str,
+        field_id: str,
+        expected_filename: str,
+        *,
+        attempts: int = 5,
+        delay_seconds: float = 1.0,
+    ) -> None:
+        for attempt in range(attempts):
+            task = await self.get_task(task_id)
+            field = task.field_by_id(field_id)
+            value = field.value if field else None
+            if _attachment_field_contains(value, expected_filename):
+                return
+            if attempt < attempts - 1:
+                await asyncio.sleep(delay_seconds)
+        raise ValueError(
+            f"ClickUp field {field_id} does not contain uploaded attachment {expected_filename}."
+        )
 
     async def _clear_attachment_custom_field(self, task_id: str, field_id: str) -> None:
         task = await self.get_task(task_id)
@@ -210,3 +232,18 @@ class ClickUpClient:
         if isinstance(value, list):
             return ", ".join(str(item) for item in value).strip()
         return str(value).strip()
+
+
+def _attachment_field_contains(value: object | None, expected_filename: str) -> bool:
+    if not isinstance(value, list):
+        return False
+    expected = expected_filename.casefold()
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title", "")).casefold()
+        url = str(item.get("url", "")).casefold()
+        url_w_query = str(item.get("url_w_query", "")).casefold()
+        if expected in {title, url.rsplit("/", 1)[-1], url_w_query.rsplit("/", 1)[-1].split("?", 1)[0]}:
+            return True
+    return False
