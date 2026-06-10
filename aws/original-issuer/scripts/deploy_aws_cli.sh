@@ -300,13 +300,19 @@ if [[ "${INTEGRATION_ID}" == "None" || -z "${INTEGRATION_ID}" ]]; then
     --output text)"
 fi
 
-ROUTE_KEY="POST /webhooks/clickup/hbl-original"
-ROUTE_ID="$(aws apigatewayv2 get-routes --api-id "${API_ID}" --region "${REGION}" --query "Items[?RouteKey=='${ROUTE_KEY}'].RouteId | [0]" --output text)"
-if [[ "${ROUTE_ID}" == "None" || -z "${ROUTE_ID}" ]]; then
-  aws apigatewayv2 create-route --api-id "${API_ID}" --route-key "${ROUTE_KEY}" --target "integrations/${INTEGRATION_ID}" --region "${REGION}" >/dev/null
-else
-  aws apigatewayv2 update-route --api-id "${API_ID}" --route-id "${ROUTE_ID}" --target "integrations/${INTEGRATION_ID}" --region "${REGION}" >/dev/null
-fi
+ensure_route() {
+  local route_key="$1"
+  local route_id
+  route_id="$(aws apigatewayv2 get-routes --api-id "${API_ID}" --region "${REGION}" --query "Items[?RouteKey=='${route_key}'].RouteId | [0]" --output text)"
+  if [[ "${route_id}" == "None" || -z "${route_id}" ]]; then
+    aws apigatewayv2 create-route --api-id "${API_ID}" --route-key "${route_key}" --target "integrations/${INTEGRATION_ID}" --region "${REGION}" >/dev/null
+  else
+    aws apigatewayv2 update-route --api-id "${API_ID}" --route-id "${route_id}" --target "integrations/${INTEGRATION_ID}" --region "${REGION}" >/dev/null
+  fi
+}
+
+ensure_route "POST /webhooks/clickup/hbl-original"
+ensure_route "POST /webhooks/clickup/hbl-draft"
 
 if ! aws apigatewayv2 get-stage --api-id "${API_ID}" --stage-name '$default' --region "${REGION}" >/dev/null 2>&1; then
   aws apigatewayv2 create-stage --api-id "${API_ID}" --stage-name '$default' --auto-deploy --region "${REGION}" >/dev/null
@@ -324,13 +330,17 @@ aws lambda add-permission \
   --source-arn "arn:aws:execute-api:${REGION}:${ACCOUNT_ID}:${API_ID}/*/*/*" \
   --region "${REGION}" >/dev/null
 
-WEBHOOK_URL="https://${API_ID}.execute-api.${REGION}.amazonaws.com/webhooks/clickup/hbl-original"
+ORIGINAL_WEBHOOK_URL="https://${API_ID}.execute-api.${REGION}.amazonaws.com/webhooks/clickup/hbl-original"
+DRAFT_WEBHOOK_URL="https://${API_ID}.execute-api.${REGION}.amazonaws.com/webhooks/clickup/hbl-draft"
 
 cat <<EOF
 
 Deployment complete.
-Webhook URL:
-${WEBHOOK_URL}
+Original webhook URL:
+${ORIGINAL_WEBHOOK_URL}
+
+Draft webhook URL:
+${DRAFT_WEBHOOK_URL}
 
 ClickUp automation header:
 X-MTM-HBL-Webhook-Secret: <value stored in Secrets Manager ${WEBHOOK_SECRET_NAME}>

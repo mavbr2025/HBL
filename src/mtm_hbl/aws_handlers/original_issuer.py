@@ -6,6 +6,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any
 
 import boto3
@@ -30,12 +31,14 @@ def webhook_handler(event: dict[str, Any], context: object) -> dict[str, Any]:
         if _is_dry_run(payload, event):
             return _json_response(200, {"status": "DRY_RUN_OK"})
         task_id = _extract_task_id(payload, event)
+        mode = _webhook_mode(event, payload)
     except ValueError as exc:
         return _json_response(400, {"status": "BAD_REQUEST", "error": str(exc)})
 
     queue_url = _required_env("HBL_ORIGINAL_ISSUER_QUEUE_URL")
     message = {
         "task_id": task_id,
+        "mode": mode,
         "source": payload.get("source", "clickup_webhook"),
         "webhook_payload_sha256": sha256(
             json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
@@ -44,7 +47,7 @@ def webhook_handler(event: dict[str, Any], context: object) -> dict[str, Any]:
         "request_id": getattr(context, "aws_request_id", ""),
     }
     sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps(message))
-    return _json_response(202, {"status": "ACCEPTED", "task_id": task_id})
+    return _json_response(202, {"status": "ACCEPTED", "task_id": task_id, "mode": mode})
 
 
 def worker_handler(event: dict[str, Any], context: object) -> dict[str, Any]:
@@ -61,12 +64,20 @@ def worker_handler(event: dict[str, Any], context: object) -> dict[str, Any]:
 
 async def _process_message(payload: dict[str, Any]) -> dict[str, Any]:
     task_id = parse_clickup_task_id(str(payload.get("task_id", "")))
-    job_id = f"original#{task_id}"
+    mode = str(payload.get("mode") or "issue").strip().casefold()
+    if mode not in {"draft", "issue"}:
+        mode = "issue"
+    job_id = _job_id(mode, task_id, payload)
     jobs_table = _jobs_table()
 
-    started = _start_job(jobs_table, job_id, task_id, payload)
+    started = _start_job(jobs_table, job_id, task_id, payload, mode)
     if not started:
-        return {"status": "SKIPPED", "reason": "job already running or issued", "task_id": task_id}
+        return {
+            "status": "SKIPPED",
+            "reason": "job already running or issued",
+            "task_id": task_id,
+            "mode": mode,
+        }
 
     settings = _lambda_settings()
     token = _clickup_access_token()
@@ -78,8 +89,8 @@ async def _process_message(payload: dict[str, Any]) -> dict[str, Any]:
             client=client,
             settings=settings,
             app_config=AppConfig(settings.config_dir),
-            mode="issue",
-            output_dir=Path("/tmp") / "hbl_runs" / task_id,
+            mode="draft" if mode == "draft" else "issue",
+            output_dir=Path("/tmp") / "hbl_runs" / mode / task_id / job_id.replace("#", "_"),
             logo_path=Path(os.getenv("HBL_LOGO_PATH", "assets/mtm_logix_logo.png")),
             attach_to_clickup=True,
             post_comment=True,
@@ -92,13 +103,14 @@ async def _process_message(payload: dict[str, Any]) -> dict[str, Any]:
         )
     except Exception as exc:
         _mark_job_failed(jobs_table, job_id, exc)
-        await _post_failure_comment(client, task_id, str(exc))
-        return {"status": "FAILED", "task_id": task_id, "error": str(exc)}
+        await _post_failure_comment(client, task_id, str(exc), mode=mode)
+        return {"status": "FAILED", "task_id": task_id, "mode": mode, "error": str(exc)}
 
-    _mark_job_issued(jobs_table, job_id, result.model_dump())
+    _mark_job_completed(jobs_table, job_id, result.model_dump(), mode)
     return {
-        "status": "ISSUED",
+        "status": "GENERATED" if mode == "draft" else "ISSUED",
         "task_id": task_id,
+        "mode": mode,
         "hbl_number": result.hbl_number,
         "package_id": result.package_id,
     }
@@ -223,6 +235,22 @@ def _is_dry_run(payload: dict[str, Any], event: dict[str, Any]) -> bool:
     return any(str(value or "").strip().casefold() in {"1", "true", "yes"} for value in candidates)
 
 
+def _webhook_mode(event: dict[str, Any], payload: dict[str, Any]) -> str:
+    query_params = event.get("queryStringParameters") or {}
+    candidates = [payload.get("mode")]
+    if isinstance(query_params, dict):
+        candidates.append(query_params.get("mode"))
+    for candidate in candidates:
+        value = str(candidate or "").strip().casefold()
+        if value in {"draft", "issue"}:
+            return value
+
+    path = str(event.get("rawPath") or event.get("path") or "").casefold()
+    if path.endswith("/hbl-draft") or "/hbl-draft" in path:
+        return "draft"
+    return "issue"
+
+
 def _lambda_settings() -> Settings:
     return Settings(
         runs_dir=Path(os.getenv("RUNS_DIR", "/tmp/runs")),
@@ -235,11 +263,21 @@ def _jobs_table():
     return dynamodb.Table(_required_env("HBL_ISSUER_JOBS_TABLE"))
 
 
-def _start_job(table, job_id: str, task_id: str, payload: dict[str, Any]) -> bool:
+def _job_id(mode: str, task_id: str, payload: dict[str, Any]) -> str:
+    if mode == "draft":
+        request_id = re.sub(r"[^A-Za-z0-9_-]", "", str(payload.get("request_id") or ""))
+        if not request_id:
+            request_id = re.sub(r"[^A-Za-z0-9_-]", "", str(payload.get("received_at") or _now()))
+        return f"draft#{task_id}#{request_id}"
+    return f"original#{task_id}"
+
+
+def _start_job(table, job_id: str, task_id: str, payload: dict[str, Any], mode: str) -> bool:
     now = _now()
     item = {
         "job_id": job_id,
         "task_id": task_id,
+        "mode": mode,
         "status": "RUNNING",
         "created_at": now,
         "updated_at": now,
@@ -252,6 +290,8 @@ def _start_job(table, job_id: str, task_id: str, payload: dict[str, Any]) -> boo
     except ClientError as exc:
         if exc.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
             raise
+    if mode == "draft":
+        return False
     existing = table.get_item(Key={"job_id": job_id}).get("Item", {})
     if existing.get("status") in {"RUNNING", "ISSUED"}:
         return False
@@ -264,21 +304,23 @@ def _start_job(table, job_id: str, task_id: str, payload: dict[str, Any]) -> boo
     return True
 
 
-def _mark_job_issued(table, job_id: str, result: dict[str, Any]) -> None:
+def _mark_job_completed(table, job_id: str, result: dict[str, Any], mode: str) -> None:
+    status = "GENERATED" if mode == "draft" else "ISSUED"
     table.update_item(
         Key={"job_id": job_id},
         UpdateExpression=(
             "SET #s = :issued, updated_at = :now, hbl_number = :hbl, "
-            "package_id = :package_id, pdf_sha256 = :pdf_sha256, result_json = :result"
+            "package_id = :package_id, pdf_sha256 = :pdf_sha256, result_json = :result, #m = :mode"
         ),
-        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeNames={"#s": "status", "#m": "mode"},
         ExpressionAttributeValues={
-            ":issued": "ISSUED",
+            ":issued": status,
             ":now": _now(),
             ":hbl": result.get("hbl_number", ""),
             ":package_id": result.get("package_id", ""),
             ":pdf_sha256": result.get("pdf_sha256", ""),
             ":result": json.dumps(result, ensure_ascii=False),
+            ":mode": mode,
         },
     )
 
@@ -296,16 +338,53 @@ def _mark_job_failed(table, job_id: str, exc: Exception) -> None:
     )
 
 
-async def _post_failure_comment(client: ClickUpClient, task_id: str, error: str) -> None:
+async def _post_failure_comment(client: ClickUpClient, task_id: str, error: str, *, mode: str) -> None:
     try:
+        task = await client.get_task(task_id)
+        assignee_id = _comment_assignee_id_from_task(task)
         await client.post_comment(
             task_id,
-            "Automatic ORIGINAL HBL issuance failed.\n"
-            f"Reason: {error}\n"
-            "No original was issued by the AWS automation.",
+            _failure_comment_text(mode, error),
+            assignee_id=assignee_id,
         )
     except Exception:
         return
+
+
+def _failure_comment_text(mode: str, error: str) -> str:
+    if mode == "draft":
+        heading = "Draft HBL generation failed."
+        closing = "No draft was issued. Please correct the HBL source fields and trigger draft generation again."
+    else:
+        heading = "Automatic ORIGINAL HBL issuance failed."
+        closing = "No original was issued by the AWS automation."
+
+    return (
+        f"{heading}\n\n"
+        "Missing or invalid required data:\n"
+        f"{_format_error_bullets(error)}\n\n"
+        f"{closing}"
+    )
+
+
+def _format_error_bullets(error: str) -> str:
+    lines = [line.strip() for line in str(error or "").splitlines() if line.strip()]
+    if not lines:
+        return "- Unknown validation error."
+    bullets: list[str] = []
+    for line in lines[:10]:
+        if line.startswith("- "):
+            bullets.append(line)
+        else:
+            bullets.append(f"- {line}")
+    return "\n".join(bullets)
+
+
+def _comment_assignee_id_from_task(task) -> str:
+    for assignee in getattr(task, "assignees", []) or []:
+        if getattr(assignee, "id", ""):
+            return assignee.id
+    return ""
 
 
 def _json_response(status_code: int, payload: dict[str, Any]) -> dict[str, Any]:

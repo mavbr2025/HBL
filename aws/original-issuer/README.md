@@ -1,31 +1,42 @@
-# MTM HBL ORIGINAL Issuer
+# MTM HBL Webhook Issuer
 
-Serverless webhook worker for issuing MTM Logix ORIGINAL HBL packages from a ClickUp automation.
+Serverless webhook worker for generating MTM Logix HBL drafts and issuing ORIGINAL HBL packages
+from ClickUp automations.
 
 This service is separate from the public QR verification service. The verification service answers
 `/verify/{verification_id}`. This issuer service receives a private ClickUp webhook and runs the
-controlled ORIGINAL generation path.
+controlled HBL generation paths.
 
 ## Flow
 
-1. ClickUp automation detects the approved ORIGINAL trigger.
-2. ClickUp calls `POST /webhooks/clickup/hbl-original`.
+1. ClickUp automation detects either the draft trigger field or the approved ORIGINAL trigger.
+2. ClickUp calls one of:
+   - `POST /webhooks/clickup/hbl-draft`
+   - `POST /webhooks/clickup/hbl-original`
 3. Webhook Lambda validates `X-MTM-HBL-Webhook-Secret`.
-4. Webhook Lambda enqueues `{ "task_id": "..." }` to SQS.
-5. Worker Lambda consumes the queue and calls the existing generator in `mode="issue"`.
-6. Worker validates approval, hard QA, HBL number source, and original field overwrite protection.
-7. Worker creates the ORIGINAL/COPY PDF package, registers QR verification records, uploads the
+4. Webhook Lambda enqueues `{ "task_id": "...", "mode": "draft|issue" }` to SQS.
+5. Worker Lambda consumes the queue and calls the existing generator in `mode="draft"` or
+   `mode="issue"`.
+6. For ORIGINAL, the worker validates approval, hard QA, HBL number source, and original field
+   overwrite protection.
+7. For DRAFT, the worker generates a draft without signature, QR issuance records, or ORIGINAL upload.
+8. Worker uploads the PDF, comments, and DMs the assignee.
+9. For ORIGINAL, the worker creates the ORIGINAL/COPY PDF package, registers QR verification records, uploads the
    PDF to ClickUp field `b7c70ef7-1c86-4c11-8022-a5c4913216ed`, comments, and DMs the assignee.
 
 ## Safety Rules
 
-- The worker always runs `mode="issue"`.
-- It refuses issuance unless the ClickUp approval fields pass `config/clickup_fields.yaml`.
-- It refuses issuance if hard QA errors exist.
-- It refuses automatic issuance if the ClickUp ORIGINAL field already contains an attachment.
+- ORIGINAL always runs `mode="issue"`.
+- ORIGINAL refuses issuance unless the ClickUp approval fields pass `config/clickup_fields.yaml`.
+- ORIGINAL refuses issuance if hard QA errors exist.
+- ORIGINAL refuses automatic issuance if the ClickUp ORIGINAL field already contains an attachment.
 - Reissue/void remains a controlled manual process and is not triggered by this webhook.
-- Duplicate webhook deliveries are blocked by DynamoDB idempotency table
+- Duplicate ORIGINAL webhook deliveries are blocked by DynamoDB idempotency table
   `mtm-hbl-original-jobs-<env>`.
+- DRAFT webhook deliveries are intentionally repeatable so operators can regenerate drafts by updating
+  the draft trigger field.
+- If DRAFT generation fails, the worker posts a ClickUp comment listing the missing or invalid data and
+  DMs the task assignee. No draft is uploaded on failure.
 
 ## Required AWS Resources
 
@@ -65,12 +76,12 @@ export HBL_WEBHOOK_SECRET="<strong-random-shared-secret>"
 aws/original-issuer/scripts/deploy_aws_cli.sh
 ```
 
-The deployment prints the webhook URL.
+The deployment prints both webhook URLs.
 
 If the deployment user lacks permissions, replace `ACCOUNT_ID`, `REGION`, and `ENVIRONMENT`
 inside `deploy-iam-policy.json`, attach it to the deployment IAM user, then rerun the script.
 
-## ClickUp Automation
+## ClickUp ORIGINAL Automation
 
 Trigger:
 
@@ -117,6 +128,50 @@ If ClickUp only supports task URL variables in the automation, this also works:
 }
 ```
 
+## ClickUp DRAFT Automation
+
+Trigger:
+
+- When field `e51205ba-ea9d-4755-a3fe-1648770b6671` changes.
+- Field label recommendation: `HBL Draft Trigger`.
+
+Action:
+
+- Webhook / Call URL.
+
+Method:
+
+```text
+POST
+```
+
+URL:
+
+```text
+https://<api-id>.execute-api.us-east-1.amazonaws.com/webhooks/clickup/hbl-draft
+```
+
+Headers:
+
+```text
+Content-Type: application/json
+X-MTM-HBL-Webhook-Secret: <Secrets Manager webhook secret value>
+```
+
+URL parameters:
+
+```text
+task_id: Task ID
+```
+
+For ClickUp's test button only, use:
+
+```text
+dry_run: true
+```
+
+Remove `dry_run=true` before enabling production draft generation.
+
 ## Test Webhook Manually
 
 ```bash
@@ -152,6 +207,23 @@ Valid statuses:
 
 - `RUNNING`
 - `ISSUED`
+- `FAILED`
+
+For draft:
+
+```bash
+WEBHOOK_URL="https://<api-id>.execute-api.us-east-1.amazonaws.com/webhooks/clickup/hbl-draft"
+
+curl -i -X POST "$WEBHOOK_URL?task_id=86e1qfama" \
+  -H "Content-Type: application/json" \
+  -H "X-MTM-HBL-Webhook-Secret: $WEBHOOK_SECRET" \
+  -d '{"source":"manual_draft_webhook_test"}'
+```
+
+Draft job IDs use `draft#<task_id>#<request>` and valid statuses are:
+
+- `RUNNING`
+- `GENERATED`
 - `FAILED`
 
 ## Production Notes
