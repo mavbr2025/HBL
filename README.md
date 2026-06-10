@@ -28,12 +28,15 @@ HBL_VERIFICATION_BUCKET=
 HBL_VERIFICATION_TABLE=mtm-hbl-verification-dev
 ```
 
-Phase 1 constraints:
+Operational constraints:
 
 - Guatemala only.
-- Draft generation only.
-- No final/original HBL generation.
-- No automatic signatures, stamps, customer emails, or MBL redaction.
+- Drafts can be generated without QR/signature and are written to the draft field.
+- Originals can be issued only through the approved ORIGINAL path.
+- Automatic ORIGINAL issuance requires ClickUp approval fields, no hard QA errors,
+  QR verification registration, and protected ClickUp writeback.
+- Reissue/void remains a controlled manual flow.
+- No customer emails or MBL redaction.
 - No draft upload to the ClickUp final PDF custom field.
 
 ## Dev Verification Package Test
@@ -123,3 +126,53 @@ Approval and fast-path field names are configured in `config/clickup_fields.yaml
 The fastest path is to populate `Canonical HBL JSON` or one of its aliases in
 ClickUp, so generation can skip PDF extraction and render directly from structured
 data.
+
+## AWS ORIGINAL Webhook Issuer
+
+The AWS ORIGINAL issuer is in `aws/original-issuer`.
+
+It deploys:
+
+- API Gateway webhook endpoint.
+- Webhook Lambda.
+- SQS queue and DLQ.
+- Worker Lambda.
+- DynamoDB idempotency/job table.
+- Secrets Manager references for ClickUp OAuth token and webhook shared secret.
+
+Deploy:
+
+```bash
+export AWS_REGION=us-east-1
+export ENVIRONMENT=dev
+export HBL_VERIFICATION_BASE_URL="https://gf1j6ukxfe.execute-api.us-east-1.amazonaws.com"
+export HBL_VERIFICATION_BUCKET="mtm-hbl-documents-dev-525753067477"
+export HBL_VERIFICATION_TABLE="mtm-hbl-verification-dev"
+export CLICKUP_WORKSPACE_ID="8451352"
+export CLICKUP_ACCESS_TOKEN="<clickup-oauth-access-token>"
+
+aws/original-issuer/scripts/deploy_aws_cli.sh
+```
+
+ClickUp automation should call:
+
+```text
+POST https://<api-id>.execute-api.us-east-1.amazonaws.com/webhooks/clickup/hbl-original
+```
+
+With header:
+
+```text
+X-MTM-HBL-Webhook-Secret: <Secrets Manager webhook secret value>
+```
+
+Payload:
+
+```json
+{
+  "task_id": "{{task.id}}",
+  "source": "clickup_original_approval"
+}
+```
+
+See `aws/original-issuer/README.md` for the full deployment and test checklist.

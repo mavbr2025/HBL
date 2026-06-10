@@ -13,5 +13,6 @@ password_site_inventory/
 tools/password_site_inventory.py
 aws/verification-service/.build/
 aws/verification-service/src/__pycache__/
+aws/original-issuer/.build/
 assets/signature.png
 samples/

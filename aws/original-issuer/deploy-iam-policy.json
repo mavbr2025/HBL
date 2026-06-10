@@ -1,0 +1,112 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Identity",
+      "Effect": "Allow",
+      "Action": ["sts:GetCallerIdentity"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Secrets",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mtm-hbl/clickup-access-token/ENVIRONMENT*",
+        "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mtm-hbl/webhook-secret/ENVIRONMENT*"
+      ]
+    },
+    {
+      "Sid": "SqsQueues",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes",
+        "sqs:SetQueueAttributes"
+      ],
+      "Resource": [
+        "arn:aws:sqs:REGION:ACCOUNT_ID:mtm-hbl-original-issuer-ENVIRONMENT",
+        "arn:aws:sqs:REGION:ACCOUNT_ID:mtm-hbl-original-issuer-dlq-ENVIRONMENT"
+      ]
+    },
+    {
+      "Sid": "DynamoTables",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/mtm-hbl-original-jobs-ENVIRONMENT",
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/mtm-hbl-verification-ENVIRONMENT"
+      ]
+    },
+    {
+      "Sid": "LambdaFunctions",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:TagResource",
+        "lambda:CreateEventSourceMapping",
+        "lambda:ListEventSourceMappings",
+        "lambda:UpdateEventSourceMapping"
+      ],
+      "Resource": [
+        "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-original-webhook-ENVIRONMENT",
+        "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-original-worker-ENVIRONMENT"
+      ]
+    },
+    {
+      "Sid": "ApiGatewayHttpApi",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:PATCH"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:REGION::/apis",
+        "arn:aws:apigateway:REGION::/apis/*"
+      ]
+    },
+    {
+      "Sid": "IamForLambdaRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:GetRole",
+        "iam:AttachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/mtm-hbl-original-issuer-role-ENVIRONMENT"
+    },
+    {
+      "Sid": "AllowAttachBasicLambdaExecutionPolicy",
+      "Effect": "Allow",
+      "Action": ["iam:AttachRolePolicy"],
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/mtm-hbl-original-issuer-role-ENVIRONMENT",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        }
+      }
+    }
+  ]
+}

@@ -12,6 +12,7 @@ from mtm_hbl.pdf.hbl_package import (
     generate_bill_of_lading_package,
     split_cargo_pages,
     split_description_pages,
+    split_freight_pages,
     verification_id_for_page,
     verification_url_for_page,
 )
@@ -216,6 +217,56 @@ def test_long_container_list_continues_without_repeating_prior_containers(tmp_pa
     assert "CONTAINER: TLLU0000001" in page_1
     assert "CONTAINER: TLLU0000001" not in page_2
     assert "CONTAINER: TLLU0000009" in page_2
+
+
+def test_many_freight_charges_continue_and_total_from_visible_source_rows(tmp_path):
+    data = package_data()
+    data.charges.line_items = [
+        ChargeLine(description=f"Charge {index}", rate="100.00", unit="PER BL", currency="USD", collect_amount=str(index))
+        for index in range(1, 8)
+    ]
+    output = tmp_path / "many-freight.pdf"
+
+    generate_bill_of_lading_draft(data, output)
+
+    reader = PdfReader(str(output))
+    assert len(split_freight_pages(data)) == 2
+    assert len(reader.pages) == 2
+    page_1 = reader.pages[0].extract_text()
+    page_2 = reader.pages[1].extract_text()
+    assert "Charge 1" in page_1
+    assert "Charge 4" in page_1
+    assert "Charge 5" not in page_1
+    assert "FREIGHT AND CHARGES" in page_1
+    assert "Charge 5" in page_2
+    assert "Charge 7" in page_2
+    assert "TOTAL FREIGHT" in page_2
+    assert "28.00" in page_2
+
+
+def test_hidden_freight_charges_are_not_rendered_or_totaled(tmp_path):
+    data = package_data()
+    data.charges.line_items = [
+        ChargeLine(description="Visible Charge", rate="100.00", unit="PER BL", currency="USD", collect_amount="100.00"),
+        ChargeLine(
+            description="Internal Charge",
+            rate="999.00",
+            unit="PER BL",
+            currency="USD",
+            collect_amount="999.00",
+            show_on_hbl=False,
+            include_in_total=False,
+        ),
+    ]
+    output = tmp_path / "visible-freight.pdf"
+
+    generate_bill_of_lading_draft(data, output)
+
+    text = "\n".join(page.extract_text() for page in PdfReader(str(output)).pages)
+    assert "Visible Charge" in text
+    assert "Internal Charge" not in text
+    assert "100.00" in text
+    assert "999.00" not in text
 
 
 def test_hbl_package_uses_freight_forwarder_terminology(tmp_path):

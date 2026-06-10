@@ -1,4 +1,7 @@
 import asyncio
+import json
+
+import pytest
 
 from mtm_hbl.clickup_hbl_generator import (
     evaluate_hbl_approval,
@@ -123,6 +126,42 @@ def test_generate_from_clickup_creates_one_page_draft_when_not_approved(tmp_path
     assert result.pdf_path.endswith("Draft_WH26040006_v1.pdf")
 
 
+def test_generate_from_clickup_accepts_numeric_canonical_string_fields(tmp_path, app_config):
+    data = package_data()
+    payload = data.model_dump(mode="json")
+    payload["charges"]["total_freight"] = 15000
+    payload["carrier_receipt"]["container_count_numeric"] = 5
+    task = ClickUpTaskData(
+        id="task-1",
+        custom_fields=[
+            ClickUpCustomField(
+                id="canonical",
+                name="Canonical HBL JSON",
+                value=json.dumps(payload),
+            ),
+            ClickUpCustomField(id="approval", name="HBL Approval Status", value="Pending Approval"),
+        ],
+    )
+    client = FakeClickUpClient(
+        task,
+        {"hbl_number": "WH26040006", "owner_country": "Guatemala"},
+    )
+
+    result = asyncio.run(
+        generate_hbl_from_clickup(
+            task_ref="task-1",
+            client=client,
+            settings=Settings(runs_dir=tmp_path),
+            app_config=app_config,
+            mode="draft",
+            output_dir=tmp_path,
+        )
+    )
+
+    assert result.mode_generated == "draft"
+    assert result.pdf_path.endswith("Draft_WH26040006_v1.pdf")
+
+
 def test_generate_from_clickup_issues_when_approved(monkeypatch, tmp_path, app_config):
     data = package_data()
     task = ClickUpTaskData(
@@ -171,6 +210,56 @@ def test_generate_from_clickup_issues_when_approved(monkeypatch, tmp_path, app_c
     assert result.mode_generated == "issue"
     assert result.package_id == "pkg_test"
     assert result.verification_urls["WH26040006-O1"].endswith("/WH26040006-O1")
+
+
+def test_automatic_original_issue_refuses_existing_original_attachment(monkeypatch, tmp_path, app_config):
+    data = package_data()
+    task = ClickUpTaskData(
+        id="task-1",
+        custom_fields=[
+            ClickUpCustomField(
+                id="canonical",
+                name="Canonical HBL JSON",
+                value=data.model_dump_json(),
+            ),
+            ClickUpCustomField(id="approval", name="HBL Approval Status", value="Approved"),
+            ClickUpCustomField(id="approved-by", name="HBL Approved By", value="Operator"),
+            ClickUpCustomField(id="approved-at", name="HBL Approved At", value="2026-05-26"),
+            ClickUpCustomField(
+                id="b7c70ef7-1c86-4c11-8022-a5c4913216ed",
+                name="HBL Original",
+                value=[{"id": "existing-original", "title": "HBL_Package_WH26040006.pdf"}],
+            ),
+        ],
+    )
+    client = FakeClickUpClient(
+        task,
+        {"hbl_number": "WH26040006", "owner_country": "Guatemala"},
+    )
+
+    def fail_register(*args, **kwargs):
+        raise AssertionError("original package should not be registered before overwrite guard")
+
+    monkeypatch.setattr("mtm_hbl.clickup_hbl_generator.register_issued_package", fail_register)
+
+    with pytest.raises(ValueError, match="original field already contains an attachment"):
+        asyncio.run(
+            generate_hbl_from_clickup(
+                task_ref="task-1",
+                client=client,
+                settings=Settings(runs_dir=tmp_path),
+                app_config=app_config,
+                mode="issue",
+                output_dir=tmp_path,
+                attach_to_clickup=True,
+                verification_base_url="https://verify.example.com",
+                bucket="bucket",
+                table="table",
+                prevent_original_overwrite=True,
+            )
+        )
+
+    assert client.uploaded is False
 
 
 def test_clickup_attachment_uses_draft_output_field(tmp_path, app_config):
