@@ -113,11 +113,31 @@ else
 fi
 DLQ_ARN="$(aws sqs get-queue-attributes --queue-url "${DLQ_URL}" --attribute-names QueueArn --region "${REGION}" --query 'Attributes.QueueArn' --output text)"
 
+QUEUE_ATTRIBUTES="${SERVICE_DIR}/.build/queue-attributes.json"
+python3 - "${DLQ_ARN}" "${QUEUE_ATTRIBUTES}" <<'PY'
+import json
+import sys
+
+dlq_arn = sys.argv[1]
+output_path = sys.argv[2]
+attributes = {
+    "VisibilityTimeout": "180",
+    "RedrivePolicy": json.dumps(
+        {
+            "deadLetterTargetArn": dlq_arn,
+            "maxReceiveCount": "3",
+        }
+    ),
+}
+with open(output_path, "w") as fh:
+    json.dump(attributes, fh)
+PY
+
 QUEUE_URL="$(aws sqs get-queue-url --queue-name "${QUEUE_NAME}" --region "${REGION}" --query QueueUrl --output text 2>/dev/null || true)"
 if [[ -z "${QUEUE_URL}" || "${QUEUE_URL}" == "None" ]]; then
   QUEUE_URL="$(aws sqs create-queue \
     --queue-name "${QUEUE_NAME}" \
-    --attributes "VisibilityTimeout=180,RedrivePolicy={\"deadLetterTargetArn\":\"${DLQ_ARN}\",\"maxReceiveCount\":\"3\"}" \
+    --attributes "file://${QUEUE_ATTRIBUTES}" \
     --region "${REGION}" \
     --query QueueUrl \
     --output text)"
@@ -125,7 +145,7 @@ if [[ -z "${QUEUE_URL}" || "${QUEUE_URL}" == "None" ]]; then
 else
   aws sqs set-queue-attributes \
     --queue-url "${QUEUE_URL}" \
-    --attributes "VisibilityTimeout=180,RedrivePolicy={\"deadLetterTargetArn\":\"${DLQ_ARN}\",\"maxReceiveCount\":\"3\"}" \
+    --attributes "file://${QUEUE_ATTRIBUTES}" \
     --region "${REGION}"
   echo "Queue exists: ${QUEUE_NAME}"
 fi
@@ -198,7 +218,7 @@ aws iam put-role-policy \
   --policy-document "file://${INLINE_POLICY}" >/dev/null
 
 ROLE_ARN="$(aws iam get-role --role-name "${ROLE_NAME}" --query Role.Arn --output text)"
-COMMON_ENV="AWS_REGION=${REGION},RUNS_DIR=/tmp/runs,CONFIG_DIR=config,CLICKUP_API_BASE_URL=${CLICKUP_API_BASE_URL},CLICKUP_WORKSPACE_ID=${CLICKUP_WORKSPACE_ID},CLICKUP_ACCESS_TOKEN_SECRET_NAME=${CLICKUP_TOKEN_SECRET_NAME},HBL_WEBHOOK_SECRET_NAME=${WEBHOOK_SECRET_NAME},HBL_ORIGINAL_ISSUER_QUEUE_URL=${QUEUE_URL},HBL_ISSUER_JOBS_TABLE=${JOBS_TABLE},HBL_VERIFICATION_BASE_URL=${VERIFICATION_BASE_URL},HBL_VERIFICATION_BUCKET=${DOCUMENT_BUCKET},HBL_VERIFICATION_TABLE=${VERIFICATION_TABLE},HBL_LOGO_PATH=assets/mtm_logix_logo.png,HBL_ISSUED_BY=${ISSUED_BY}"
+COMMON_ENV="RUNS_DIR=/tmp/runs,CONFIG_DIR=config,CLICKUP_API_BASE_URL=${CLICKUP_API_BASE_URL},CLICKUP_WORKSPACE_ID=${CLICKUP_WORKSPACE_ID},CLICKUP_ACCESS_TOKEN_SECRET_NAME=${CLICKUP_TOKEN_SECRET_NAME},HBL_WEBHOOK_SECRET_NAME=${WEBHOOK_SECRET_NAME},HBL_ORIGINAL_ISSUER_QUEUE_URL=${QUEUE_URL},HBL_ISSUER_JOBS_TABLE=${JOBS_TABLE},HBL_VERIFICATION_BASE_URL=${VERIFICATION_BASE_URL},HBL_VERIFICATION_BUCKET=${DOCUMENT_BUCKET},HBL_VERIFICATION_TABLE=${VERIFICATION_TABLE},HBL_LOGO_PATH=assets/mtm_logix_logo.png,HBL_ISSUED_BY=${ISSUED_BY}"
 
 ensure_function() {
   local function_name="$1"
@@ -244,27 +264,20 @@ ensure_function "${WORKER_FUNCTION}" "mtm_hbl.aws_handlers.original_issuer.worke
 WORKER_ARN="$(aws lambda get-function --function-name "${WORKER_FUNCTION}" --region "${REGION}" --query Configuration.FunctionArn --output text)"
 WEBHOOK_ARN="$(aws lambda get-function --function-name "${WEBHOOK_FUNCTION}" --region "${REGION}" --query Configuration.FunctionArn --output text)"
 
-MAPPING_UUID="$(aws lambda list-event-source-mappings \
+if aws lambda create-event-source-mapping \
   --function-name "${WORKER_FUNCTION}" \
   --event-source-arn "${QUEUE_ARN}" \
-  --region "${REGION}" \
-  --query 'EventSourceMappings[0].UUID' \
-  --output text)"
-if [[ -z "${MAPPING_UUID}" || "${MAPPING_UUID}" == "None" ]]; then
-  aws lambda create-event-source-mapping \
-    --function-name "${WORKER_FUNCTION}" \
-    --event-source-arn "${QUEUE_ARN}" \
-    --batch-size 1 \
-    --maximum-batching-window-in-seconds 0 \
-    --region "${REGION}" >/dev/null
+  --batch-size 1 \
+  --maximum-batching-window-in-seconds 0 \
+  --region "${REGION}" >/dev/null 2>"${SERVICE_DIR}/.build/event-source-mapping.err"; then
   echo "Created worker event source mapping"
 else
-  aws lambda update-event-source-mapping \
-    --uuid "${MAPPING_UUID}" \
-    --batch-size 1 \
-    --enabled \
-    --region "${REGION}" >/dev/null
-  echo "Worker event source mapping exists"
+  if grep -q "ResourceConflictException" "${SERVICE_DIR}/.build/event-source-mapping.err"; then
+    echo "Worker event source mapping exists"
+  else
+    cat "${SERVICE_DIR}/.build/event-source-mapping.err" >&2
+    exit 1
+  fi
 fi
 
 API_ID="$(aws apigatewayv2 get-apis --region "${REGION}" --query "Items[?Name=='${API_NAME}'].ApiId | [0]" --output text)"

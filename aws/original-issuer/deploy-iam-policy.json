@@ -68,7 +68,8 @@
       ],
       "Resource": [
         "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-original-webhook-ENVIRONMENT",
-        "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-original-worker-ENVIRONMENT"
+        "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-original-worker-ENVIRONMENT",
+        "arn:aws:lambda:REGION:ACCOUNT_ID:event-source-mapping:*"
       ]
     },
     {

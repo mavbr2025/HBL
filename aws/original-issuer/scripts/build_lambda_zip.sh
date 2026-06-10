@@ -20,7 +20,7 @@ mkdir -p "${PACKAGE_DIR}"
   --python-version 3.11 \
   --only-binary=:all: \
   --no-compile \
-  -r "${SERVICE_DIR}/requirements.txt"
+  -r "${SERVICE_DIR}/requirements.txt" >&2
 
 rsync -a \
   --exclude '__pycache__' \
