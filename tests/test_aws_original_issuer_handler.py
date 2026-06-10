@@ -17,6 +17,23 @@ def test_extract_task_id_accepts_clickup_task_url(monkeypatch):
     )
 
 
+def test_extract_task_id_accepts_clickup_automation_labels(monkeypatch):
+    handler = _handler_module(monkeypatch)
+
+    assert handler._extract_task_id({"Task ID": "86e1qfama"}) == "86e1qfama"
+    assert handler._extract_task_id({"task": {"id": "86e1qfama"}}) == "86e1qfama"
+    assert handler._extract_task_id({"data": {"taskId": "86e1qfama"}}) == "86e1qfama"
+
+
+def test_extract_task_id_accepts_query_parameters(monkeypatch):
+    handler = _handler_module(monkeypatch)
+
+    assert (
+        handler._extract_task_id({}, {"queryStringParameters": {"Task ID": "86e1qfama"}})
+        == "86e1qfama"
+    )
+
+
 def test_webhook_rejects_missing_secret(monkeypatch):
     handler = _handler_module(monkeypatch)
     monkeypatch.setenv("HBL_WEBHOOK_SECRET", "expected")
@@ -30,6 +47,23 @@ def test_webhook_rejects_missing_secret(monkeypatch):
     )
 
     assert response["statusCode"] == 401
+
+
+def test_webhook_dry_run_does_not_require_task_id(monkeypatch):
+    handler = _handler_module(monkeypatch)
+    monkeypatch.setenv("HBL_WEBHOOK_SECRET", "expected")
+
+    response = handler.webhook_handler(
+        {
+            "headers": {"X-MTM-HBL-Webhook-Secret": "expected"},
+            "queryStringParameters": {"dry_run": "true"},
+            "body": json.dumps({}),
+        },
+        object(),
+    )
+
+    assert response["statusCode"] == 200
+    assert json.loads(response["body"])["status"] == "DRY_RUN_OK"
 
 
 def test_webhook_accepts_and_enqueues_task(monkeypatch):

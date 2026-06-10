@@ -27,7 +27,9 @@ def webhook_handler(event: dict[str, Any], context: object) -> dict[str, Any]:
 
     try:
         payload = _json_body(event)
-        task_id = _extract_task_id(payload)
+        if _is_dry_run(payload, event):
+            return _json_response(200, {"status": "DRY_RUN_OK"})
+        task_id = _extract_task_id(payload, event)
     except ValueError as exc:
         return _json_response(400, {"status": "BAD_REQUEST", "error": str(exc)})
 
@@ -154,19 +156,71 @@ def _json_body(event: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def _extract_task_id(payload: dict[str, Any]) -> str:
-    candidates = [
-        payload.get("task_id"),
-        payload.get("taskId"),
-        payload.get("id"),
-        payload.get("task", {}).get("id") if isinstance(payload.get("task"), dict) else "",
-        payload.get("data", {}).get("task_id") if isinstance(payload.get("data"), dict) else "",
-    ]
+def _extract_task_id(payload: dict[str, Any], event: dict[str, Any] | None = None) -> str:
+    candidates = _task_id_candidates(payload)
+    if event:
+        query_params = event.get("queryStringParameters") or {}
+        if isinstance(query_params, dict):
+            candidates.extend(_task_id_candidates(query_params))
     for candidate in candidates:
         value = str(candidate or "").strip()
         if value:
             return parse_clickup_task_id(value)
     raise ValueError("Webhook payload did not include a ClickUp task_id.")
+
+
+def _task_id_candidates(payload: dict[str, Any]) -> list[Any]:
+    candidates: list[Any] = []
+    direct_keys = [
+        "task_id",
+        "taskId",
+        "taskID",
+        "Task ID",
+        "Task Id",
+        "TaskID",
+        "id",
+        "ID",
+        "url",
+        "task_url",
+        "taskUrl",
+        "Task URL",
+    ]
+    candidates.extend(payload.get(key) for key in direct_keys)
+
+    for container_key in ("task", "data", "event", "payload"):
+        value = payload.get(container_key)
+        if isinstance(value, dict):
+            candidates.extend(_task_id_candidates(value))
+
+    custom_fields = payload.get("custom_fields") or payload.get("customFields")
+    if isinstance(custom_fields, list):
+        for field in custom_fields:
+            if not isinstance(field, dict):
+                continue
+            name = str(field.get("name") or field.get("field_name") or "").casefold()
+            field_id = str(field.get("id") or field.get("field_id") or "")
+            if name in {"task id", "task"} or field_id in {"task_id", "taskId"}:
+                candidates.append(field.get("value"))
+
+    return candidates
+
+
+def _is_dry_run(payload: dict[str, Any], event: dict[str, Any]) -> bool:
+    query_params = event.get("queryStringParameters") or {}
+    candidates = [
+        payload.get("dry_run"),
+        payload.get("dryRun"),
+        payload.get("test"),
+    ]
+    if isinstance(query_params, dict):
+        candidates.extend(
+            [
+                query_params.get("dry_run"),
+                query_params.get("dryRun"),
+                query_params.get("test"),
+            ]
+        )
+    return any(str(value or "").strip().casefold() in {"1", "true", "yes"} for value in candidates)
 
 
 def _lambda_settings() -> Settings:
