@@ -32,6 +32,7 @@ MARGIN = 10 * MM
 HEADER_HEIGHT = 118
 PARTY_HEIGHT = 195
 SHIPPER_BLOCK_HEIGHT = 55
+TERMS_VALIDATION_HEIGHT = 56
 ROUTING_HEIGHT = 43
 CARGO_TITLE_HEIGHT = 17
 CARGO_TABLE_HEIGHT = 218
@@ -63,9 +64,19 @@ REQUIRED_TERMS = [
     "Andrea Piedad Velasquez Castellon",
     "For MTM Logix Guatemala Sociedad Anonima",
     "Goods to be delivered to:",
+    "Terms & Conditions / Document Validation",
     "Shipper's load, stow, count and seal. Particulars furnished by shipper.",
     "No. of original B(s)/L:",
 ]
+
+TERMS_VALIDATION_TITLE = "TERMS & CONDITIONS / DOCUMENT VALIDATION"
+TERMS_VALIDATION_TEXT = (
+    "This Multimodal Transport Bill of Lading is issued subject to MTM Logix's Terms "
+    "and Conditions, available through the QR code and validation URL printed on this "
+    "document. Such Terms and Conditions are incorporated into and form part of this "
+    "Bill of Lading. Scan the QR code to verify authenticity, document status, release "
+    "status, and the applicable Terms and Conditions version."
+)
 
 
 @dataclass(frozen=True)
@@ -633,15 +644,36 @@ class BillOfLadingPackageRenderer:
             self.data.parties.delivery_apply_to.raw_text
             or self.data.parties.consignee.raw_text
         )
+        right_w = self.width * 0.50
+        terms_h = TERMS_VALIDATION_HEIGHT
+        delivery_h = height - terms_h
+        terms_top = y_bottom + terms_h
+        self._hline(x_mid, terms_top, right_w, 0.45)
         self._draw_labeled_block(
             x_mid,
-            y_bottom,
-            self.width * 0.50,
-            height,
+            terms_top,
+            right_w,
+            delivery_h,
             "GOODS TO BE DELIVERED TO:",
             delivery,
         )
+        self._draw_terms_validation_block(x_mid, y_bottom, right_w, terms_h)
         return y_bottom
+
+    def _draw_terms_validation_block(self, x: float, y: float, w: float, h: float) -> None:
+        pad = 5
+        body_size = 5.0
+        self._text(x + pad, y + h - 10, TERMS_VALIDATION_TITLE, FONT_BOLD, 6.0)
+        self._wrapped_lines(
+            x + pad,
+            y + h - 20,
+            self._wrap(TERMS_VALIDATION_TEXT, w - (2 * pad), FONT, body_size),
+            w - (2 * pad),
+            body_size,
+            font=FONT,
+            line_gap=6.0,
+            max_lines=6,
+        )
 
     def _draw_routing_section(self, y_top: float) -> float:
         height = 43
