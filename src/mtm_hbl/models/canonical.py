@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CanonicalBaseModel(BaseModel):
@@ -67,6 +67,15 @@ class Cargo(CanonicalBaseModel):
     measurement: str = ""
     measurement_unit: str = "CBM"
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_aliases(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        _copy_first_present(normalized, "measurement", ["cbm", "measurement_cbm", "volume"])
+        return normalized
+
 
 class Container(CanonicalBaseModel):
     container_no: str = ""
@@ -79,6 +88,34 @@ class Container(CanonicalBaseModel):
     measurement: str = ""
     measurement_unit: str = "CBM"
     marks_and_numbers: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_aliases(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        _copy_first_present(
+            normalized,
+            "container_no",
+            ["container_number", "container", "container_no.", "container_no"],
+        )
+        _copy_first_present(
+            normalized,
+            "seal_no",
+            ["seal", "seal_number", "seal_no.", "seal_no"],
+        )
+        _copy_first_present(
+            normalized,
+            "container_type",
+            ["type", "container_size_type", "equipment_type", "container_type"],
+        )
+        _copy_first_present(
+            normalized,
+            "measurement",
+            ["cbm", "measurement_cbm", "volume", "measurement"],
+        )
+        return normalized
 
 
 class Charges(CanonicalBaseModel):
@@ -188,3 +225,22 @@ class CanonicalHblData(CanonicalBaseModel):
     source_trace: SourceTrace = Field(default_factory=SourceTrace)
     qa: QA = Field(default_factory=QA)
     audit: Audit = Field(default_factory=Audit)
+
+
+def _copy_first_present(data: dict[str, Any], target: str, aliases: list[str]) -> None:
+    if _has_value(data.get(target)):
+        return
+    normalized_lookup = {_normalize_key(key): key for key in data}
+    for alias in aliases:
+        source_key = normalized_lookup.get(_normalize_key(alias))
+        if source_key and _has_value(data.get(source_key)):
+            data[target] = data[source_key]
+            return
+
+
+def _normalize_key(key: str) -> str:
+    return key.replace(" ", "_").replace("-", "_").rstrip(".").casefold()
+
+
+def _has_value(value: Any) -> bool:
+    return value is not None and str(value).strip() != ""
