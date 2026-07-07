@@ -127,6 +127,38 @@ The fastest path is to populate `Canonical HBL JSON` or one of its aliases in
 ClickUp, so generation can skip PDF extraction and render directly from structured
 data.
 
+For containers, the preferred canonical keys are:
+
+```json
+{
+  "container_no": "FDCU0491394",
+  "seal_no": "CNDY52633",
+  "container_type": "40HQ",
+  "measurement": "68.000"
+}
+```
+
+The generator also accepts the common AI-agent aliases
+`container_number`, `seal`, `type`, and `cbm`, and normalizes them before
+rendering. Agents should still write the canonical names when possible.
+
+## Gamma API Connection
+
+Gamma API credentials are read from local environment variables:
+
+```text
+GAMMA_API_KEY=
+GAMMA_API_BASE_URL=https://public-api.gamma.app/v1.0
+```
+
+Check the connection:
+
+```bash
+PYTHONPATH=src python tools/gamma_check_connection.py --limit 5
+```
+
+The key must remain in `.env` or a secure runtime secret store. Do not commit it.
+
 ## AWS ORIGINAL Webhook Issuer
 
 The AWS ORIGINAL issuer is in `aws/original-issuer`.
