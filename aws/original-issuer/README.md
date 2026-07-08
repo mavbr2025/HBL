@@ -24,13 +24,94 @@ controlled HBL generation paths.
 9. For ORIGINAL, the worker creates the ORIGINAL/COPY PDF package, registers QR verification records, uploads the
    PDF to ClickUp field `b7c70ef7-1c86-4c11-8022-a5c4913216ed`, comments, and DMs the assignee.
 
+## Manager Void/Reissue Portal
+
+The same AWS package can deploy a restricted manager portal for controlled ORIGINAL
+void/reissue actions:
+
+```text
+https://hbl.mtmlogix.com/admin
+```
+
+Portal flow:
+
+1. User signs in with Microsoft Entra ID.
+2. Lambda validates the Entra ID token and checks the email allowlist.
+3. Manager enters the ClickUp task link or task ID.
+4. Portal previews the HBL and currently active verification records.
+5. Manager confirms by typing `REISSUE <HBL_NUMBER>`.
+6. Lambda issues a replacement ORIGINAL/COPY package using the existing generator.
+7. Lambda replaces the ClickUp `HBL Original` field.
+8. Only after replacement succeeds, Lambda marks the prior verification records `VOID`.
+9. Lambda posts a ClickUp comment with the old package, new package, and verification URL.
+
+Allowed users are controlled by `HBL_ADMIN_ALLOWED_EMAILS`. Default:
+
+```text
+andrea@mtmlogix.com,mario@mtmlogix.com,silvia@mtmlogix.com
+```
+
+### Entra App Registration
+
+Create an app registration in Microsoft Entra ID:
+
+- Platform: Web
+- Redirect URI:
+
+```text
+https://hbl.mtmlogix.com/admin/callback
+```
+
+For initial testing before DNS is ready, use the API Gateway URL printed by the deploy script:
+
+```text
+https://<api-id>.execute-api.us-east-1.amazonaws.com/admin/callback
+```
+
+Required values for deployment:
+
+```bash
+export ENABLE_HBL_ADMIN_PORTAL=yes
+export ENTRA_TENANT_ID="<tenant-id>"
+export ENTRA_CLIENT_ID="<app-client-id>"
+export ENTRA_CLIENT_SECRET="<app-client-secret>" # first deploy only, stored in Secrets Manager
+export HBL_ADMIN_BASE_URL="https://hbl.mtmlogix.com"
+export HBL_ADMIN_ALLOWED_EMAILS="andrea@mtmlogix.com,mario@mtmlogix.com,silvia@mtmlogix.com"
+```
+
+Secrets Manager names:
+
+```text
+mtm-hbl/entra-client-secret/<env>
+mtm-hbl/admin-session-secret/<env>
+```
+
+### hbl.mtmlogix.com DNS
+
+To activate the friendly domain, AWS needs an ISSUED ACM certificate in the same
+region as API Gateway:
+
+```bash
+export HBL_ADMIN_DOMAIN_NAME="hbl.mtmlogix.com"
+export HBL_ADMIN_CERTIFICATE_ARN="arn:aws:acm:us-east-1:<account>:certificate/<id>"
+```
+
+After deployment, create the DNS record printed by the script:
+
+```text
+CNAME hbl.mtmlogix.com -> <api-gateway-regional-domain>
+```
+
+If the MTM Logix public DNS zone is not in this AWS account, create or validate
+the ACM certificate and CNAME in the external DNS provider.
+
 ## Safety Rules
 
 - ORIGINAL always runs `mode="issue"`.
 - ORIGINAL refuses issuance unless the ClickUp approval fields pass `config/clickup_fields.yaml`.
 - ORIGINAL refuses issuance if hard QA errors exist.
 - ORIGINAL refuses automatic issuance if the ClickUp ORIGINAL field already contains an attachment.
-- Reissue/void remains a controlled manual process and is not triggered by this webhook.
+- Reissue/void is only available through the restricted manager portal.
 - Duplicate ORIGINAL webhook deliveries are blocked by DynamoDB idempotency table
   `mtm-hbl-original-jobs-<env>`.
 - DRAFT webhook deliveries are intentionally repeatable so operators can regenerate drafts by updating

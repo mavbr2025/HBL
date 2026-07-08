@@ -18,7 +18,9 @@
       ],
       "Resource": [
         "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mtm-hbl/clickup-access-token/ENVIRONMENT*",
-        "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mtm-hbl/webhook-secret/ENVIRONMENT*"
+        "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mtm-hbl/webhook-secret/ENVIRONMENT*",
+        "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mtm-hbl/entra-client-secret/ENVIRONMENT*",
+        "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:mtm-hbl/admin-session-secret/ENVIRONMENT*"
       ]
     },
     {
@@ -43,7 +45,8 @@
         "dynamodb:DescribeTable",
         "dynamodb:GetItem",
         "dynamodb:PutItem",
-        "dynamodb:UpdateItem"
+        "dynamodb:UpdateItem",
+        "dynamodb:Scan"
       ],
       "Resource": [
         "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/mtm-hbl-original-jobs-ENVIRONMENT",
@@ -69,6 +72,7 @@
       "Resource": [
         "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-original-webhook-ENVIRONMENT",
         "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-original-worker-ENVIRONMENT",
+        "arn:aws:lambda:REGION:ACCOUNT_ID:function:mtm-hbl-admin-portal-ENVIRONMENT",
         "arn:aws:lambda:REGION:ACCOUNT_ID:event-source-mapping:*"
       ]
     },
@@ -83,7 +87,9 @@
       ],
       "Resource": [
         "arn:aws:apigateway:REGION::/apis",
-        "arn:aws:apigateway:REGION::/apis/*"
+        "arn:aws:apigateway:REGION::/apis/*",
+        "arn:aws:apigateway:REGION::/domainnames",
+        "arn:aws:apigateway:REGION::/domainnames/*"
       ]
     },
     {

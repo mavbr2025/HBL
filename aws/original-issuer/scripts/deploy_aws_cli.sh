@@ -43,12 +43,22 @@ ROLE_NAME="mtm-hbl-original-issuer-role-${ENVIRONMENT}"
 POLICY_NAME="mtm-hbl-original-issuer-policy-${ENVIRONMENT}"
 WEBHOOK_FUNCTION="mtm-hbl-original-webhook-${ENVIRONMENT}"
 WORKER_FUNCTION="mtm-hbl-original-worker-${ENVIRONMENT}"
+ADMIN_FUNCTION="mtm-hbl-admin-portal-${ENVIRONMENT}"
 API_NAME="mtm-hbl-original-issuer-api-${ENVIRONMENT}"
 CLICKUP_TOKEN_SECRET_NAME="${CLICKUP_ACCESS_TOKEN_SECRET_NAME:-mtm-hbl/clickup-access-token/${ENVIRONMENT}}"
 WEBHOOK_SECRET_NAME="${HBL_WEBHOOK_SECRET_NAME:-mtm-hbl/webhook-secret/${ENVIRONMENT}}"
+ENTRA_CLIENT_SECRET_NAME="${ENTRA_CLIENT_SECRET_NAME:-mtm-hbl/entra-client-secret/${ENVIRONMENT}}"
+ADMIN_SESSION_SECRET_NAME="${HBL_ADMIN_SESSION_SECRET_NAME:-mtm-hbl/admin-session-secret/${ENVIRONMENT}}"
 ISSUED_BY="${HBL_ISSUED_BY:-Andrea Piedad Velasquez Castellon}"
 CLICKUP_API_BASE_URL="${CLICKUP_API_BASE_URL:-https://api.clickup.com/api/v2}"
 CLICKUP_WORKSPACE_ID="${CLICKUP_WORKSPACE_ID:-}"
+ENABLE_ADMIN_PORTAL="${ENABLE_HBL_ADMIN_PORTAL:-no}"
+ADMIN_BASE_URL="${HBL_ADMIN_BASE_URL:-https://hbl.mtmlogix.com}"
+ADMIN_ALLOWED_EMAILS="${HBL_ADMIN_ALLOWED_EMAILS:-andrea@mtmlogix.com,mario@mtmlogix.com,silvia@mtmlogix.com}"
+ADMIN_DOMAIN_NAME="${HBL_ADMIN_DOMAIN_NAME:-hbl.mtmlogix.com}"
+ADMIN_CERTIFICATE_ARN="${HBL_ADMIN_CERTIFICATE_ARN:-}"
+ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-}"
+ENTRA_CLIENT_ID="${ENTRA_CLIENT_ID:-}"
 
 echo "Deploying MTM HBL ORIGINAL issuer"
 echo "Account: ${ACCOUNT_ID}"
@@ -90,6 +100,18 @@ else
   ensure_secret "${CLICKUP_TOKEN_SECRET_NAME}" "" "no"
 fi
 ensure_secret "${WEBHOOK_SECRET_NAME}" "${HBL_WEBHOOK_SECRET:-}" "yes"
+if [[ "${ENABLE_ADMIN_PORTAL}" == "yes" ]]; then
+  ensure_secret "${ADMIN_SESSION_SECRET_NAME}" "${HBL_ADMIN_SESSION_SECRET:-}" "yes"
+  if [[ -n "${ENTRA_CLIENT_SECRET:-}" ]]; then
+    ensure_secret "${ENTRA_CLIENT_SECRET_NAME}" "${ENTRA_CLIENT_SECRET}" "no"
+  else
+    ensure_secret "${ENTRA_CLIENT_SECRET_NAME}" "" "no"
+  fi
+  if [[ -z "${ENTRA_TENANT_ID}" || -z "${ENTRA_CLIENT_ID}" ]]; then
+    echo "ENTRA_TENANT_ID and ENTRA_CLIENT_ID are required when ENABLE_HBL_ADMIN_PORTAL=yes." >&2
+    exit 1
+  fi
+fi
 
 if aws dynamodb describe-table --table-name "${JOBS_TABLE}" --region "${REGION}" >/dev/null 2>&1; then
   echo "DynamoDB job table exists: ${JOBS_TABLE}"
@@ -190,7 +212,7 @@ cat > "${INLINE_POLICY}" <<JSON
     },
     {
       "Effect": "Allow",
-      "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"],
+      "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Scan"],
       "Resource": [
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${JOBS_TABLE}",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${VERIFICATION_TABLE}"
@@ -206,7 +228,9 @@ cat > "${INLINE_POLICY}" <<JSON
       "Action": ["secretsmanager:GetSecretValue"],
       "Resource": [
         "arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:${CLICKUP_TOKEN_SECRET_NAME}*",
-        "arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:${WEBHOOK_SECRET_NAME}*"
+        "arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:${WEBHOOK_SECRET_NAME}*",
+        "arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:${ENTRA_CLIENT_SECRET_NAME}*",
+        "arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:${ADMIN_SESSION_SECRET_NAME}*"
       ]
     }
   ]
@@ -218,7 +242,38 @@ aws iam put-role-policy \
   --policy-document "file://${INLINE_POLICY}" >/dev/null
 
 ROLE_ARN="$(aws iam get-role --role-name "${ROLE_NAME}" --query Role.Arn --output text)"
-COMMON_ENV="RUNS_DIR=/tmp/runs,CONFIG_DIR=config,CLICKUP_API_BASE_URL=${CLICKUP_API_BASE_URL},CLICKUP_WORKSPACE_ID=${CLICKUP_WORKSPACE_ID},CLICKUP_ACCESS_TOKEN_SECRET_NAME=${CLICKUP_TOKEN_SECRET_NAME},HBL_WEBHOOK_SECRET_NAME=${WEBHOOK_SECRET_NAME},HBL_ORIGINAL_ISSUER_QUEUE_URL=${QUEUE_URL},HBL_ISSUER_JOBS_TABLE=${JOBS_TABLE},HBL_VERIFICATION_BASE_URL=${VERIFICATION_BASE_URL},HBL_VERIFICATION_BUCKET=${DOCUMENT_BUCKET},HBL_VERIFICATION_TABLE=${VERIFICATION_TABLE},HBL_LOGO_PATH=assets/mtm_logix_logo.png,HBL_ISSUED_BY=${ISSUED_BY}"
+ENV_FILE="${SERVICE_DIR}/.build/lambda-env.json"
+python3 - "${ENV_FILE}" \
+  "RUNS_DIR=/tmp/runs" \
+  "CONFIG_DIR=config" \
+  "CLICKUP_API_BASE_URL=${CLICKUP_API_BASE_URL}" \
+  "CLICKUP_WORKSPACE_ID=${CLICKUP_WORKSPACE_ID}" \
+  "CLICKUP_ACCESS_TOKEN_SECRET_NAME=${CLICKUP_TOKEN_SECRET_NAME}" \
+  "HBL_WEBHOOK_SECRET_NAME=${WEBHOOK_SECRET_NAME}" \
+  "HBL_ORIGINAL_ISSUER_QUEUE_URL=${QUEUE_URL}" \
+  "HBL_ISSUER_JOBS_TABLE=${JOBS_TABLE}" \
+  "HBL_VERIFICATION_BASE_URL=${VERIFICATION_BASE_URL}" \
+  "HBL_VERIFICATION_BUCKET=${DOCUMENT_BUCKET}" \
+  "HBL_VERIFICATION_TABLE=${VERIFICATION_TABLE}" \
+  "HBL_LOGO_PATH=assets/mtm_logix_logo.png" \
+  "HBL_ISSUED_BY=${ISSUED_BY}" \
+  "ENTRA_TENANT_ID=${ENTRA_TENANT_ID}" \
+  "ENTRA_CLIENT_ID=${ENTRA_CLIENT_ID}" \
+  "ENTRA_CLIENT_SECRET_NAME=${ENTRA_CLIENT_SECRET_NAME}" \
+  "HBL_ADMIN_SESSION_SECRET_NAME=${ADMIN_SESSION_SECRET_NAME}" \
+  "HBL_ADMIN_ALLOWED_EMAILS=${ADMIN_ALLOWED_EMAILS}" \
+  "HBL_ADMIN_BASE_URL=${ADMIN_BASE_URL}" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+variables = {}
+for item in sys.argv[2:]:
+    key, value = item.split("=", 1)
+    variables[key] = value
+with open(path, "w") as fh:
+    json.dump({"Variables": variables}, fh)
+PY
 
 ensure_function() {
   local function_name="$1"
@@ -236,7 +291,7 @@ ensure_function() {
       --runtime python3.11 \
       --handler "${handler}" \
       --role "${ROLE_ARN}" \
-      --environment "Variables={${COMMON_ENV}}" \
+      --environment "file://${ENV_FILE}" \
       --timeout "${timeout}" \
       --memory-size "${memory}" \
       --region "${REGION}" >/dev/null
@@ -249,7 +304,7 @@ ensure_function() {
       --handler "${handler}" \
       --role "${ROLE_ARN}" \
       --zip-file "fileb://${BUILD_ZIP}" \
-      --environment "Variables={${COMMON_ENV}}" \
+      --environment "file://${ENV_FILE}" \
       --timeout "${timeout}" \
       --memory-size "${memory}" \
       --region "${REGION}" >/dev/null
@@ -260,9 +315,15 @@ ensure_function() {
 
 ensure_function "${WEBHOOK_FUNCTION}" "mtm_hbl.aws_handlers.original_issuer.webhook_handler" 15 256
 ensure_function "${WORKER_FUNCTION}" "mtm_hbl.aws_handlers.original_issuer.worker_handler" 180 1024
+if [[ "${ENABLE_ADMIN_PORTAL}" == "yes" ]]; then
+  ensure_function "${ADMIN_FUNCTION}" "mtm_hbl.aws_handlers.hbl_admin.admin_handler" 120 1024
+fi
 
 WORKER_ARN="$(aws lambda get-function --function-name "${WORKER_FUNCTION}" --region "${REGION}" --query Configuration.FunctionArn --output text)"
 WEBHOOK_ARN="$(aws lambda get-function --function-name "${WEBHOOK_FUNCTION}" --region "${REGION}" --query Configuration.FunctionArn --output text)"
+if [[ "${ENABLE_ADMIN_PORTAL}" == "yes" ]]; then
+  ADMIN_ARN="$(aws lambda get-function --function-name "${ADMIN_FUNCTION}" --region "${REGION}" --query Configuration.FunctionArn --output text)"
+fi
 
 if aws lambda create-event-source-mapping \
   --function-name "${WORKER_FUNCTION}" \
@@ -313,6 +374,38 @@ ensure_route() {
 
 ensure_route "POST /webhooks/clickup/hbl-original"
 ensure_route "POST /webhooks/clickup/hbl-draft"
+if [[ "${ENABLE_ADMIN_PORTAL}" == "yes" ]]; then
+  ADMIN_INTEGRATION_ID="$(aws apigatewayv2 get-integrations --api-id "${API_ID}" --region "${REGION}" --query "Items[?IntegrationUri=='${ADMIN_ARN}'].IntegrationId | [0]" --output text)"
+  if [[ "${ADMIN_INTEGRATION_ID}" == "None" || -z "${ADMIN_INTEGRATION_ID}" ]]; then
+    ADMIN_INTEGRATION_ID="$(aws apigatewayv2 create-integration \
+      --api-id "${API_ID}" \
+      --integration-type AWS_PROXY \
+      --integration-uri "${ADMIN_ARN}" \
+      --payload-format-version "2.0" \
+      --region "${REGION}" \
+      --query IntegrationId \
+      --output text)"
+  fi
+
+  ensure_admin_route() {
+    local route_key="$1"
+    local route_id
+    route_id="$(aws apigatewayv2 get-routes --api-id "${API_ID}" --region "${REGION}" --query "Items[?RouteKey=='${route_key}'].RouteId | [0]" --output text)"
+    if [[ "${route_id}" == "None" || -z "${route_id}" ]]; then
+      aws apigatewayv2 create-route --api-id "${API_ID}" --route-key "${route_key}" --target "integrations/${ADMIN_INTEGRATION_ID}" --region "${REGION}" >/dev/null
+    else
+      aws apigatewayv2 update-route --api-id "${API_ID}" --route-id "${route_id}" --target "integrations/${ADMIN_INTEGRATION_ID}" --region "${REGION}" >/dev/null
+    fi
+  }
+
+  ensure_admin_route "GET /"
+  ensure_admin_route "GET /admin"
+  ensure_admin_route "GET /admin/login"
+  ensure_admin_route "GET /admin/callback"
+  ensure_admin_route "POST /admin/logout"
+  ensure_admin_route "POST /admin/reissue/preview"
+  ensure_admin_route "POST /admin/reissue/confirm"
+fi
 
 if ! aws apigatewayv2 get-stage --api-id "${API_ID}" --stage-name '$default' --region "${REGION}" >/dev/null 2>&1; then
   aws apigatewayv2 create-stage --api-id "${API_ID}" --stage-name '$default' --auto-deploy --region "${REGION}" >/dev/null
@@ -330,6 +423,51 @@ aws lambda add-permission \
   --source-arn "arn:aws:execute-api:${REGION}:${ACCOUNT_ID}:${API_ID}/*/*/*" \
   --region "${REGION}" >/dev/null
 
+if [[ "${ENABLE_ADMIN_PORTAL}" == "yes" ]]; then
+  ADMIN_STATEMENT_ID="AllowHblAdminHttpApiInvoke-${ENVIRONMENT}"
+  aws lambda remove-permission --function-name "${ADMIN_FUNCTION}" --statement-id "${ADMIN_STATEMENT_ID}" --region "${REGION}" >/dev/null 2>&1 || true
+  aws lambda add-permission \
+    --function-name "${ADMIN_FUNCTION}" \
+    --statement-id "${ADMIN_STATEMENT_ID}" \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:${REGION}:${ACCOUNT_ID}:${API_ID}/*/*/*" \
+    --region "${REGION}" >/dev/null
+fi
+
+CUSTOM_DOMAIN_MESSAGE=""
+if [[ "${ENABLE_ADMIN_PORTAL}" == "yes" && -n "${ADMIN_CERTIFICATE_ARN}" ]]; then
+  if aws apigatewayv2 get-domain-name --domain-name "${ADMIN_DOMAIN_NAME}" --region "${REGION}" >/dev/null 2>&1; then
+    echo "HTTP API custom domain exists: ${ADMIN_DOMAIN_NAME}"
+  else
+    aws apigatewayv2 create-domain-name \
+      --domain-name "${ADMIN_DOMAIN_NAME}" \
+      --domain-name-configurations "CertificateArn=${ADMIN_CERTIFICATE_ARN},EndpointType=REGIONAL,SecurityPolicy=TLS_1_2" \
+      --region "${REGION}" >/dev/null
+    echo "Created HTTP API custom domain: ${ADMIN_DOMAIN_NAME}"
+  fi
+
+  MAPPING_ID="$(aws apigatewayv2 get-api-mappings --domain-name "${ADMIN_DOMAIN_NAME}" --region "${REGION}" --query "Items[?ApiMappingKey==null || ApiMappingKey==''].ApiMappingId | [0]" --output text)"
+  if [[ "${MAPPING_ID}" == "None" || -z "${MAPPING_ID}" ]]; then
+    aws apigatewayv2 create-api-mapping \
+      --domain-name "${ADMIN_DOMAIN_NAME}" \
+      --api-id "${API_ID}" \
+      --stage '$default' \
+      --region "${REGION}" >/dev/null
+  else
+    aws apigatewayv2 update-api-mapping \
+      --domain-name "${ADMIN_DOMAIN_NAME}" \
+      --api-mapping-id "${MAPPING_ID}" \
+      --api-id "${API_ID}" \
+      --stage '$default' \
+      --region "${REGION}" >/dev/null
+  fi
+  DOMAIN_TARGET="$(aws apigatewayv2 get-domain-name --domain-name "${ADMIN_DOMAIN_NAME}" --region "${REGION}" --query 'DomainNameConfigurations[0].ApiGatewayDomainName' --output text)"
+  CUSTOM_DOMAIN_MESSAGE=$'\n'"Admin portal custom domain: https://${ADMIN_DOMAIN_NAME}"$'\n'"Create DNS CNAME: ${ADMIN_DOMAIN_NAME} -> ${DOMAIN_TARGET}"
+elif [[ "${ENABLE_ADMIN_PORTAL}" == "yes" ]]; then
+  CUSTOM_DOMAIN_MESSAGE=$'\n'"Admin portal API URL: https://${API_ID}.execute-api.${REGION}.amazonaws.com/admin"$'\n'"To enable https://${ADMIN_DOMAIN_NAME}, set HBL_ADMIN_CERTIFICATE_ARN to an ISSUED ACM certificate for ${ADMIN_DOMAIN_NAME} and rerun deploy."
+fi
+
 ORIGINAL_WEBHOOK_URL="https://${API_ID}.execute-api.${REGION}.amazonaws.com/webhooks/clickup/hbl-original"
 DRAFT_WEBHOOK_URL="https://${API_ID}.execute-api.${REGION}.amazonaws.com/webhooks/clickup/hbl-draft"
 
@@ -341,6 +479,7 @@ ${ORIGINAL_WEBHOOK_URL}
 
 Draft webhook URL:
 ${DRAFT_WEBHOOK_URL}
+${CUSTOM_DOMAIN_MESSAGE}
 
 ClickUp automation header:
 X-MTM-HBL-Webhook-Secret: <value stored in Secrets Manager ${WEBHOOK_SECRET_NAME}>
