@@ -19,6 +19,7 @@ class FakeClickUpClient:
         self.values = values
         self.uploaded = False
         self.output_field_id = ""
+        self.status_updates = []
         self.commented = False
         self.comment_assignee_id = ""
 
@@ -40,6 +41,10 @@ class FakeClickUpClient:
 
     async def verify_attachment_custom_field(self, task_id: str, field_id: str, expected_filename: str):
         assert field_id == self.output_field_id
+
+    async def update_task_status(self, task_id: str, status: str):
+        self.status_updates.append((task_id, status))
+        return {}
 
     async def post_comment(
         self,
@@ -295,6 +300,58 @@ def test_clickup_attachment_uses_draft_output_field(tmp_path, app_config):
     assert result.clickup_attachment_uploaded is True
     assert result.clickup_output_field_id == "85b0aff3-ccc5-4f90-b625-ed55592e07b7"
     assert client.output_field_id == "85b0aff3-ccc5-4f90-b625-ed55592e07b7"
+    assert client.status_updates == []
+
+
+def test_clickup_original_upload_sets_ready_for_original_status(monkeypatch, tmp_path, app_config):
+    data = package_data()
+    task = ClickUpTaskData(
+        id="task-1",
+        custom_fields=[
+            ClickUpCustomField(
+                id="canonical",
+                name="Canonical HBL JSON",
+                value=data.model_dump_json(),
+            ),
+            ClickUpCustomField(id="approval", name="HBL Approval Status", value="Approved"),
+            ClickUpCustomField(id="approved-by", name="HBL Approved By", value="Operator"),
+            ClickUpCustomField(id="approved-at", name="HBL Approved At", value="2026-05-26"),
+        ],
+    )
+    client = FakeClickUpClient(
+        task,
+        {"hbl_number": "WH26040006", "owner_country": "Guatemala"},
+    )
+
+    class FakeRegistration:
+        package_id = "pkg_test"
+        verification_urls = {"WH26040006-O1": "https://verify.example.com/verify/WH26040006-O1"}
+        pdf_sha256 = "pdfhash"
+        canonical_json_sha256 = "jsonhash"
+
+    monkeypatch.setattr(
+        "mtm_hbl.clickup_hbl_generator.register_issued_package",
+        lambda *args, **kwargs: FakeRegistration(),
+    )
+
+    result = asyncio.run(
+        generate_hbl_from_clickup(
+            task_ref="task-1",
+            client=client,
+            settings=Settings(runs_dir=tmp_path),
+            app_config=app_config,
+            mode="issue",
+            output_dir=tmp_path,
+            attach_to_clickup=True,
+            verification_base_url="https://verify.example.com",
+            bucket="bucket",
+            table="table",
+        )
+    )
+
+    assert result.clickup_output_field_id == "b7c70ef7-1c86-4c11-8022-a5c4913216ed"
+    assert result.clickup_status_updated_to == "READY FOR ORIGINAL"
+    assert client.status_updates == [("task-1", "READY FOR ORIGINAL")]
 
 
 def test_generated_comment_is_assigned_to_task_assignee(tmp_path, app_config):

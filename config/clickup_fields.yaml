@@ -21,6 +21,7 @@ hbl_outputs:
     field_id: "b7c70ef7-1c86-4c11-8022-a5c4913216ed"
     field_name: "HBL Original"
     use_only_after_final_approval: true
+    status_after_upload: "READY FOR ORIGINAL"
 
 approval:
   field_names:
