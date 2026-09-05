@@ -15,6 +15,9 @@ from mtm_hbl.models.clickup import ClickUpTaskData
 from mtm_hbl.pdf.hbl_package import generate_bill_of_lading_draft, generate_bill_of_lading_package
 from mtm_hbl.pipeline import PipelineInput, build_review_packet
 from mtm_hbl.verification.aws_repository import AwsVerificationConfig, register_issued_package
+from mtm_hbl.validation.validation_engine import ValidationEngine
+from mtm_hbl.utils.file_naming import safe_filename_component, contained_output_path
+from mtm_hbl.resolver.customer_rules import restore_trusted_package_exception
 
 
 GenerationMode = Literal["auto", "draft", "issue"]
@@ -79,10 +82,16 @@ async def generate_hbl_from_clickup(
     issued_by: str = "Andrea Piedad Velasquez Castellon",
 ) -> ClickUpHblGenerationResult:
     task_id = parse_clickup_task_id(task_ref)
+    safe_filename_component(task_id)
     task = await client.get_task(task_id)
     clickup_values = client.extract_configured_fields(task, app_config)
     data = _data_from_clickup_task(task, clickup_values, app_config)
     _enforce_clickup_hbl_number(data, clickup_values)
+    data.scope.owner_country = clickup_values.get("owner_country", "").strip()
+    restore_trusted_package_exception(data, app_config)
+    ValidationEngine(app_config).validate(data)
+    if data.shipment.mtm_hbl_no:
+        safe_filename_component(data.shipment.mtm_hbl_no)
 
     approval = evaluate_hbl_approval(task, app_config)
     warnings = [issue.message for issue in data.qa.soft_warnings]
@@ -92,7 +101,7 @@ async def generate_hbl_from_clickup(
     generated_mode = _select_generation_mode(mode, approval, data)
     base_output_dir = output_dir or _default_output_dir(settings.runs_dir, task_id, data)
     base_output_dir.mkdir(parents=True, exist_ok=True)
-    review_path = base_output_dir / "approved_review_from_clickup.json"
+    review_path = contained_output_path(base_output_dir, "approved_review_from_clickup.json")
     review_path.write_text(data.model_dump_json(indent=2), encoding="utf-8")
 
     registration = None
@@ -104,7 +113,7 @@ async def generate_hbl_from_clickup(
         _require_issuance_config(verification_base_url, bucket, table)
         package_id = f"pkg_{uuid4().hex}"
         verification_id_suffix = _verification_id_suffix(package_id)
-        pdf_path = base_output_dir / f"HBL_Package_{data.shipment.mtm_hbl_no}.pdf"
+        pdf_path = contained_output_path(base_output_dir, f"HBL_Package_{data.shipment.mtm_hbl_no}.pdf")
         generate_bill_of_lading_package(
             data,
             pdf_path,
@@ -128,7 +137,7 @@ async def generate_hbl_from_clickup(
             issued_by=issued_by,
         )
     else:
-        pdf_path = base_output_dir / f"Draft_{data.shipment.mtm_hbl_no or task_id}_v1.pdf"
+        pdf_path = contained_output_path(base_output_dir, f"Draft_{data.shipment.mtm_hbl_no or task_id}_v1.pdf")
         generate_bill_of_lading_draft(data, pdf_path, logo_path=logo_path)
 
     clickup_attachment_uploaded = False
@@ -223,6 +232,7 @@ def _data_from_clickup_task(
     canonical = _canonical_json_from_task(task, app_config)
     if canonical:
         canonical.shipment.clickup_task_id = task.id
+        canonical.qa = type(canonical.qa)()
         return canonical
     return build_review_packet(
         PipelineInput(clickup_task_id=task.id, clickup_values=clickup_values),
@@ -268,8 +278,7 @@ def _json_block_from_text(text: str) -> str:
 
 def _enforce_clickup_hbl_number(data: CanonicalHblData, clickup_values: dict[str, str]) -> None:
     clickup_hbl = clickup_values.get("hbl_number", "").strip()
-    if clickup_hbl:
-        data.shipment.mtm_hbl_no = clickup_hbl
+    data.shipment.mtm_hbl_no = clickup_hbl
 
 
 def _select_generation_mode(
@@ -292,7 +301,10 @@ def _select_generation_mode(
 
 def _default_output_dir(runs_dir: Path, task_id: str, data: CanonicalHblData) -> Path:
     suffix = data.shipment.mtm_hbl_no or "hbl"
-    return runs_dir / "clickup_hbl_data" / f"{task_id}_{suffix}"
+    safe_filename_component(task_id)
+    safe_filename_component(suffix)
+    base = contained_output_path(runs_dir, "clickup_hbl_data")
+    return contained_output_path(base, f"{task_id}_{suffix}")
 
 
 def _require_issuance_config(verification_base_url: str, bucket: str, table: str) -> None:
