@@ -125,6 +125,8 @@ def test_generate_from_clickup_creates_one_page_draft_when_not_approved(tmp_path
 
 def test_generate_from_clickup_issues_when_approved(monkeypatch, tmp_path, app_config):
     data = package_data()
+    # The package fixture duplicates a container; issuance requires reconciled totals.
+    data.cargo.total_packages = str(sum(int(item.package_count) for item in data.containers))
     task = ClickUpTaskData(
         id="task-1",
         custom_fields=[
